@@ -18,6 +18,8 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<CompanionService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<CompanionService>());
         serviceCollection.AddHostedService<LibraryListener>();
+        serviceCollection.AddSingleton<Imports.ImportService>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 
         // One registration per event type: Jellyfin's container does not match a consumer of a base type to its
         // derived events, so a start is not a progress as far as it is concerned.

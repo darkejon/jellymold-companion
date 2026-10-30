@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using Jellyfin.Plugin.JellyMoldCompanion.Configuration;
 using JellyMoldCompanion.Api;
+using JellyMoldCompanion.Import;
 using JellyMoldCompanion.Model;
 using JellyMoldCompanion.Recording;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -28,19 +30,28 @@ public sealed class JellyfinHost : ILibraryFacts
 {
     private readonly ILibraryManager _library;
     private readonly IUserManager _users;
+    private readonly IUserDataManager _userData;
     private readonly IServerConfigurationManager _server;
+    private readonly IApplicationPaths _paths;
 
     // Jellyfin raises an event per progress report — every ten seconds a stream — and building a snapshot walks up
     // to the series and the library. Five minutes is long enough to spare that and short enough to pick up a rename.
     private readonly ConcurrentDictionary<Guid, (MediaSnapshot? Snapshot, DateTime At)> _snapshots = new();
     private readonly ConcurrentDictionary<Guid, string> _userNames = new();
+    private readonly ConcurrentDictionary<Guid, Dictionary<string, string>> _seriesIds = new();
 
-    public JellyfinHost(ILibraryManager library, IUserManager users, IServerConfigurationManager server)
+    public JellyfinHost(ILibraryManager library, IUserManager users, IUserDataManager userData, IServerConfigurationManager server,
+        IApplicationPaths paths)
     {
         _library = library;
         _users = users;
+        _userData = userData;
         _server = server;
+        _paths = paths;
     }
+
+    private static readonly BaseItemKind[] RecordedTypes =
+        [BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video, BaseItemKind.Audio, BaseItemKind.AudioBook];
 
     // — Items —
 
@@ -58,21 +69,22 @@ public sealed class JellyfinHost : ILibraryFacts
             return cached.Snapshot;
         }
 
-        var snapshot = Build(item);
+        var snapshot = Build(item, withLibrary: true);
         _snapshots[item.Id] = (snapshot, now);
         return snapshot;
     }
 
     public MediaSnapshot? SnapshotById(Guid itemId) => Snapshot(_library.GetItemById(itemId));
 
-    private MediaSnapshot? Build(BaseItem item)
+    /// <param name="withLibrary">Which library it is in — a walk up its parents, left out when indexing the whole library.</param>
+    private MediaSnapshot? Build(BaseItem item, bool withLibrary)
     {
         if (Kind(item) is not { } kind)
         {
             return null;
         }
 
-        var library = _library.GetCollectionFolders(item).FirstOrDefault();
+        var library = withLibrary ? _library.GetCollectionFolders(item).FirstOrDefault() : null;
         var snapshot = new MediaSnapshot
         {
             ItemId = item.Id,
@@ -99,13 +111,16 @@ public sealed class JellyfinHost : ILibraryFacts
                     SeasonNumber = episode.ParentIndexNumber,
                     EpisodeNumber = episode.IndexNumber,
                     EpisodeNumberEnd = episode.IndexNumberEnd,
-                    SeriesProviderIds = new Dictionary<string, string>(episode.Series?.ProviderIds ?? new Dictionary<string, string>()),
+                    SeriesProviderIds = _seriesIds.GetOrAdd(episode.SeriesId,
+                        _ => new Dictionary<string, string>(episode.Series?.ProviderIds ?? new Dictionary<string, string>())),
                 };
 
             case Audio audio:
                 return snapshot with
                 {
-                    AlbumId = audio.AlbumEntity?.Id,
+                    // A book split into chapter files has no album: Jellyfin makes each file an item in the book's
+                    // folder, so the folder is the book (seen on 10.10.7, 2026-10-30).
+                    AlbumId = audio.AlbumEntity?.Id ?? (audio is AudioBook && audio.ParentId != Guid.Empty ? audio.ParentId : null),
                     AlbumName = audio.Album,
                     Artists = audio.Artists?.ToList() ?? [],
                     AlbumArtists = audio.AlbumArtists?.ToList() ?? [],
@@ -135,6 +150,102 @@ public sealed class JellyfinHost : ILibraryFacts
             Video => MediaKind.Video,
             _ => null,
         };
+    }
+
+    // — Imports (§8) —
+
+    /// <summary>Every film and episode in the library, indexed for matching an import to it.</summary>
+    public LibraryIndex BuildLibraryIndex() => new(
+        _library.GetItemList(new InternalItemsQuery
+            {
+                IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Episode],
+                IsVirtualItem = false,
+                Recursive = true,
+            })
+            .Select(item => Build(item, withLibrary: false))
+            .OfType<MediaSnapshot>());
+
+    /// <summary>
+    /// The install-time baseline (§8.2): every item this person has watched, as one completed viewing dated by its
+    /// last-played date and credited its running time, and every item under way at its position. All estimated:
+    /// Jellyfin's "last played" is the last *start*, and its play count counts every start.
+    /// </summary>
+    public IReadOnlyList<ImportCandidate> WatchState(Guid userId, CountingRules rules)
+    {
+        var user = _users.GetUserById(userId);
+        if (user is null)
+        {
+            return [];
+        }
+
+        var items = _library.GetItemList(new InternalItemsQuery(user) { IsPlayed = true, IncludeItemTypes = RecordedTypes, Recursive = true })
+            .Concat(_library.GetItemList(new InternalItemsQuery(user) { IsResumable = true, IncludeItemTypes = RecordedTypes, Recursive = true }))
+            .DistinctBy(i => i.Id);
+
+        var candidates = new List<ImportCandidate>();
+        foreach (var item in items)
+        {
+            var snapshot = Snapshot(item);
+            var data = _userData.GetUserData(user, item);
+            if (snapshot is null || data is null)
+            {
+                continue;
+            }
+
+            var when = new DateTimeOffset(DateTime.SpecifyKind(data.LastPlayedDate ?? item.DateCreated, DateTimeKind.Utc));
+            var runtime = snapshot.RuntimeTicks;
+            if (data.Played)
+            {
+                candidates.Add(new ImportCandidate
+                {
+                    UserId = user.Id,
+                    UserName = user.Username,
+                    Item = snapshot,
+                    Matched = true,
+                    SourceKey = item.Id.ToString("N"),
+                    Completed = true,
+                    StartedAt = when,
+                    LastActivityAt = when,
+                    CompletedAt = when,
+                    FurthestTicks = runtime ?? 0,
+                    CreditedSeconds = Completion.Credited(snapshot.Kind, runtime, 0, CompletedBy.Import, rules),
+                    Estimated = true,
+                    PlayCountNoted = data.PlayCount,
+                });
+            }
+            else if (data.PlaybackPositionTicks > 0)
+            {
+                var seconds = TimeSpan.FromTicks(data.PlaybackPositionTicks).TotalSeconds;
+                candidates.Add(new ImportCandidate
+                {
+                    UserId = user.Id,
+                    UserName = user.Username,
+                    Item = snapshot,
+                    Matched = true,
+                    SourceKey = item.Id.ToString("N"),
+                    StartedAt = when,
+                    LastActivityAt = when,
+                    FurthestTicks = data.PlaybackPositionTicks,
+                    ActualSeconds = seconds,
+                    WallSeconds = seconds,
+                    CreditedSeconds = Completion.Credited(snapshot.Kind, runtime, seconds, null, rules),
+                    Estimated = true,
+                    PlayCountNoted = data.PlayCount,
+                });
+            }
+        }
+
+        return candidates;
+    }
+
+    /// <summary>Where Playback Reporting keeps its database, if it is on this server (§8.3).</summary>
+    public string? PlaybackReportingDatabase
+    {
+        get
+        {
+            var path = Path.Combine(_paths.DataPath, "playback_reporting.db");
+            return File.Exists(path) ? path : null;
+        }
     }
 
     // — People —
@@ -182,8 +293,16 @@ public sealed class JellyfinHost : ILibraryFacts
         });
     }
 
-    /// <summary>Not known yet for books split into chapter files; a book then counts as finished when any of its files is.</summary>
-    public Guid? LastFileOfBook(Guid albumId) => null;
+    /// <summary>
+    /// The last file of a book — the one whose completion finishes it: by disc, then track, then name. For a book in one
+    /// file, that file.
+    /// </summary>
+    public Guid? LastFileOfBook(Guid albumId) =>
+        _library.GetItemList(new InternalItemsQuery { ParentId = albumId, IncludeItemTypes = [BaseItemKind.AudioBook] })
+            .OrderBy(i => i.ParentIndexNumber ?? 0)
+            .ThenBy(i => i.IndexNumber ?? 0)
+            .ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+            .LastOrDefault()?.Id;
 
     // — Rules —
 

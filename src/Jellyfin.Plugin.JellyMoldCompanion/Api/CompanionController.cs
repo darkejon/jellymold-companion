@@ -29,8 +29,13 @@ public sealed class CompanionController : ControllerBase
     private const int MaxPage = 500;
 
     private readonly CompanionService _companion;
+    private readonly Imports.ImportService _imports;
 
-    public CompanionController(CompanionService companion) => _companion = companion;
+    public CompanionController(CompanionService companion, Imports.ImportService imports)
+    {
+        _companion = companion;
+        _imports = imports;
+    }
 
     // — Who is asking (§9.1) —
 
@@ -87,7 +92,7 @@ public sealed class CompanionController : ControllerBase
             PluginVersion = typeof(CompanionController).Assembly.GetName().Version?.ToString(),
             Release = typeof(CompanionController).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
             ApiVersion,
-            Features = new[] { "history", "summary", "changes", "clientSessions", "export", "sessions" },
+            Features = new[] { "history", "summary", "changes", "clientSessions", "export", "sessions", "imports" },
             Recording = _companion.Recording.IsRecording,
             Rules = new
             {
@@ -311,6 +316,141 @@ public sealed class CompanionController : ControllerBase
         _companion.Queries.ExportJson(stream, people);
         stream.Position = 0;
         return File(stream, MediaTypeNames.Application.Json, $"jellymold-history-{stamp}.json");
+    }
+
+    // — Imports (§8) —
+
+    /// <summary>The sources, and whether each can be used here and now.</summary>
+    [HttpGet("Imports/Sources")]
+    public ActionResult<object> ImportSourcesAvailable() => new[]
+    {
+        new { Source = ImportSourceNames.Jellyfin, Available = true, ServerWide = false, NeedsFile = false,
+            Description = "Jellyfin's own watch state: everything already watched, as the baseline. Taken for everyone automatically." },
+        new { Source = ImportSourceNames.PlaybackReporting, Available = CallerIsAdmin && _companion.Host.PlaybackReportingDatabase is not null,
+            ServerWide = true, NeedsFile = false,
+            Description = "Playback Reporting's database on this server: real dates and seconds for everyone's plays. Admin only." },
+        new { Source = ImportSourceNames.TraktExport, Available = true, ServerWide = false, NeedsFile = true,
+            Description = "A Trakt export (the history or watched JSON files)." },
+        new { Source = ImportSourceNames.Letterboxd, Available = true, ServerWide = false, NeedsFile = true,
+            Description = "Letterboxd's diary.csv or watched.csv. Films only, matched by title and year." },
+        new { Source = ImportSourceNames.Csv, Available = true, ServerWide = false, NeedsFile = true,
+            Description = "A CSV with the columns in the API document." },
+    };
+
+    /// <summary>Imports, newest first: the caller's own, or — for an admin passing <c>all=true</c> — every one, server-wide ones included.</summary>
+    [HttpGet("Imports")]
+    public ActionResult<object> ImportList([FromQuery] Guid? userId = null, [FromQuery] bool all = false)
+    {
+        if (all)
+        {
+            return CallerIsAdmin
+                ? new { Items = _companion.Queries.Imports(null) }
+                : Problem(StatusCodes.Status403Forbidden, "Only an administrator can list everyone's imports.");
+        }
+
+        return TryResolve(userId, out var user, out var refusal) ? new { Items = _companion.Queries.Imports(user) } : refusal!;
+    }
+
+    /// <summary>
+    /// Reads a source and reports what importing it would add — nothing is written until it is committed. For the file
+    /// sources, the request body is the file itself (at most 20 MB).
+    /// </summary>
+    [HttpPost("Imports/{source}/Preview")]
+    [RequestSizeLimit(Imports.ImportService.MaxFileBytes)]
+    public async Task<ActionResult<object>> PreviewImport([FromRoute, Required] string source, [FromQuery] Guid? userId = null)
+    {
+        Guid? person = null;
+        if (global::JellyMoldCompanion.Import.ImportSources.IsServerWide(source))
+        {
+            if (!CallerIsAdmin)
+            {
+                return Problem(StatusCodes.Status403Forbidden, "Only an administrator can import a server-wide source.");
+            }
+        }
+        else if (TryResolve(userId, out var user, out var refusal))
+        {
+            person = user;
+        }
+        else
+        {
+            return refusal!;
+        }
+
+        // The file as the request body (Content-Type text/csv or application/json), or as a multipart form's file.
+        using var file = new MemoryStream();
+        if (Request.HasFormContentType)
+        {
+            var form = await Request.ReadFormAsync().ConfigureAwait(false);
+            if (form.Files.FirstOrDefault() is { } upload)
+            {
+                await upload.CopyToAsync(file).ConfigureAwait(false);
+            }
+            else if (!global::JellyMoldCompanion.Import.ImportSources.IsServerWide(source) && source != global::JellyMoldCompanion.Import.ImportSources.Jellyfin)
+            {
+                return Problem(StatusCodes.Status400BadRequest,
+                    "Send the file as the request body (Content-Type text/csv or application/json), or as a file in a multipart form.");
+            }
+        }
+        else
+        {
+            await Request.Body.CopyToAsync(file).ConfigureAwait(false);
+        }
+
+        file.Position = 0;
+        try
+        {
+            return await _imports.Preview(source, person, file.Length > 0 ? file : null).ConfigureAwait(false);
+        }
+        catch (global::JellyMoldCompanion.Import.ImportException e)
+        {
+            return Problem(StatusCodes.Status400BadRequest, e.Message);
+        }
+        catch (Exception e) when (e is FormatException or System.Text.Json.JsonException)
+        {
+            return Problem(StatusCodes.Status400BadRequest, "That file could not be read: " + e.Message);
+        }
+    }
+
+    [HttpPost("Imports/{importId}/Commit")]
+    public async Task<ActionResult<object>> CommitImport([FromRoute, Required] Guid importId) =>
+        await OnImport(importId, async () => await _imports.Commit(importId).ConfigureAwait(false)).ConfigureAwait(false);
+
+    /// <summary>Undoes an import: its entries stop counting (they are kept, marked undone), and whatever it replaced counts again.</summary>
+    [HttpPost("Imports/{importId}/Undo")]
+    public async Task<ActionResult<object>> UndoImport([FromRoute, Required] Guid importId) =>
+        await OnImport(importId, async () => new { Undone = await _imports.Undo(importId).ConfigureAwait(false) }).ConfigureAwait(false);
+
+    /// <summary>Something done to an existing import: allowed to its own person and to admins.</summary>
+    private async Task<ActionResult<object>> OnImport(Guid importId, Func<Task<object>> action)
+    {
+        var import = _companion.Queries.ImportById(importId);
+        if (import is null)
+        {
+            return NotFound();
+        }
+
+        if (!CallerIsAdmin && (import.UserId is null || import.UserId != CallerId))
+        {
+            return Problem(StatusCodes.Status403Forbidden, "That import is not yours.");
+        }
+
+        try
+        {
+            return await action().ConfigureAwait(false);
+        }
+        catch (global::JellyMoldCompanion.Import.ImportException e)
+        {
+            return Problem(StatusCodes.Status409Conflict, e.Message);
+        }
+    }
+
+    private static class ImportSourceNames
+    {
+        public const string Jellyfin = global::JellyMoldCompanion.Import.ImportSources.Jellyfin;
+        public const string PlaybackReporting = global::JellyMoldCompanion.Import.ImportSources.PlaybackReporting;
+        public const string TraktExport = global::JellyMoldCompanion.Import.ImportSources.TraktExport;
+        public const string Letterboxd = global::JellyMoldCompanion.Import.ImportSources.Letterboxd;
+        public const string Csv = global::JellyMoldCompanion.Import.ImportSources.Csv;
     }
 
     // — Admin (§11) —

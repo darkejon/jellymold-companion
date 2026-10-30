@@ -74,6 +74,32 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h3 class="sectionTitle">Past history</h3>
+                    <p class="fieldDescription">Everything watched before the plugin was installed comes from imports. Each
+                        person's watched items in Jellyfin are imported automatically as their starting point. Other sources
+                        are imported here: each shows what it would add before anything is written, and each can be undone.</p>
+                    <div id="jmcPlaybackReporting" class="fieldDescription"></div>
+                    <div class="selectContainer">
+                        <select is="emby-select" id="jmcImportWho" label="Import for"></select>
+                    </div>
+                    <div class="selectContainer">
+                        <select is="emby-select" id="jmcImportSource" label="From">
+                            <option value="letterboxd">Letterboxd diary.csv or watched.csv</option>
+                            <option value="trakt-export">Trakt export (JSON)</option>
+                            <option value="csv">A CSV in the documented format</option>
+                            <option value="jellyfin">Jellyfin's watch state, again</option>
+                        </select>
+                    </div>
+                    <div class="inputContainer">
+                        <input type="file" id="jmcImportFile" accept=".csv,.json,text/csv,application/json">
+                    </div>
+                    <button is="emby-button" type="button" id="jmcImportPreview" class="raised emby-button"><span>Show what it would add</span></button>
+                    <div id="jmcPreview" class="fieldDescription" style="margin-top: 1em;"></div>
+                    <h4>Imports so far</h4>
+                    <div id="jmcImports" class="fieldDescription"></div>
+                </div>
+
+                <div class="verticalSection">
                     <h3 class="sectionTitle">Export</h3>
                     <div class="selectContainer">
                         <select is="emby-select" id="jmcExportWho" label="Whose history"></select>
@@ -140,11 +166,148 @@
                 });
             }
 
+            // — Imports —
+
+            const sourceNames = {
+                'jellyfin': 'Jellyfin\'s watch state', 'playback-reporting': 'Playback Reporting', 'trakt-export': 'Trakt export',
+                'letterboxd': 'Letterboxd', 'csv': 'CSV'
+            };
+
+            function describe(report) {
+                const parts = [];
+                if (report.New) { parts.push(report.New + ' to add'); }
+                if (report.Replaces) { parts.push(report.Replaces + ' replacing a less exact record'); }
+                if (report.AlreadyImported) { parts.push(report.AlreadyImported + ' already imported'); }
+                if (report.Duplicates) { parts.push(report.Duplicates + ' already recorded from a better source'); }
+                if (report.AfterCutover) { parts.push(report.AfterCutover + ' after recording began (already recorded live)'); }
+                if (report.Unmatched) { parts.push(report.Unmatched + ' not in this library, kept with their titles'); }
+                return parts.length ? parts.join(', ') + '.' : 'Nothing to add.';
+            }
+
+            function element(tag, text) {
+                const e = document.createElement(tag);
+                if (text !== undefined) { e.textContent = text; }
+                return e;
+            }
+
+            function showPreview(report) {
+                const box = page.querySelector('#jmcPreview');
+                box.innerHTML = '';
+                box.appendChild(element('p', report.Rows + ' rows read. ' + describe(report)));
+                (report.Notes || []).forEach(function (note) { box.appendChild(element('p', note)); });
+                if (report.Sample && report.Sample.length) {
+                    const list = element('ul');
+                    report.Sample.slice(0, 12).forEach(function (row) {
+                        list.appendChild(element('li', row.Title + ' — ' + new Date(row.When).toLocaleDateString() + ' — ' + row.Outcome));
+                    });
+                    box.appendChild(list);
+                }
+                if (report.New || report.Replaces) {
+                    const go = element('button');
+                    go.type = 'button';
+                    go.className = 'raised button-submit emby-button';
+                    go.appendChild(element('span', 'Import these'));
+                    go.addEventListener('click', function () {
+                        Dashboard.showLoadingMsg();
+                        ApiClient.ajax({ type: 'POST', url: api('Imports/' + report.ImportId + '/Commit'), dataType: 'json' }).then(function (done) {
+                            Dashboard.hideLoadingMsg();
+                            box.innerHTML = '';
+                            box.appendChild(element('p', 'Imported: ' + describe(done)));
+                            showImports();
+                            showStatus();
+                        }, failed);
+                    });
+                    box.appendChild(go);
+                }
+            }
+
+            function failed(response) {
+                Dashboard.hideLoadingMsg();
+                const report = function (detail) { Dashboard.alert(detail || 'The import could not be made.'); };
+                if (response && response.json) {
+                    response.json().then(function (body) { report(body.Detail); }, function () { report(); });
+                } else {
+                    report();
+                }
+            }
+
+            function preview(source, userId, file) {
+                const query = userId ? { userId: userId } : {};
+                Dashboard.showLoadingMsg();
+                fetch(ApiClient.getUrl('JellyMold/v1/Imports/' + source + '/Preview', query), {
+                    method: 'POST',
+                    headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                    body: file || null
+                }).then(function (response) {
+                    if (!response.ok) { throw response; }
+                    return response.json();
+                }).then(function (report) {
+                    Dashboard.hideLoadingMsg();
+                    showPreview(report);
+                }, failed);
+            }
+
+            function showImports() {
+                const box = page.querySelector('#jmcImports');
+                ApiClient.getJSON(api('Imports') + '?all=true').then(function (result) {
+                    box.innerHTML = '';
+                    if (!result.Items.length) {
+                        box.textContent = 'None yet.';
+                        return;
+                    }
+                    const list = element('ul');
+                    result.Items.forEach(function (i) {
+                        const state = i.UndoneAt ? 'undone' : i.CommittedAt ? 'imported' : 'previewed, not imported';
+                        const who = i.UserName ? ' for ' + i.UserName : ' for everyone';
+                        const item = element('li', (sourceNames[i.Source] || i.Source) + who + ', '
+                            + new Date(i.CreatedAt).toLocaleString() + ' — ' + state + (i.Report && i.CommittedAt ? ': ' + describe(i.Report) : ''));
+                        if (i.CommittedAt && !i.UndoneAt) {
+                            const undo = element('button');
+                            undo.type = 'button';
+                            undo.className = 'emby-button';
+                            undo.style.marginLeft = '1em';
+                            undo.appendChild(element('span', 'Undo'));
+                            undo.addEventListener('click', function () {
+                                Dashboard.confirm('Its entries stop counting. They are kept, marked as undone, and anything it replaced counts again.',
+                                    'Undo this import?').then(function () {
+                                    ApiClient.ajax({ type: 'POST', url: api('Imports/' + i.Id + '/Undo') }).then(function () {
+                                        showImports();
+                                        showStatus();
+                                    }, failed);
+                                });
+                            });
+                            item.appendChild(undo);
+                        }
+                        list.appendChild(item);
+                    });
+                    box.appendChild(list);
+                });
+
+                ApiClient.getJSON(api('Imports/Sources')).then(function (sources) {
+                    const pr = sources.find(function (s) { return s.Source === 'playback-reporting'; });
+                    const box = page.querySelector('#jmcPlaybackReporting');
+                    box.innerHTML = '';
+                    if (!pr || !pr.Available) {
+                        box.textContent = 'Playback Reporting is not on this server, so there is nothing to import from it.';
+                        return;
+                    }
+                    box.appendChild(element('span', 'Playback Reporting\'s database is on this server, with everyone\'s past plays. '));
+                    const go = element('button');
+                    go.type = 'button';
+                    go.className = 'raised emby-button';
+                    go.appendChild(element('span', 'Show what it would add'));
+                    go.addEventListener('click', function () { preview('playback-reporting', null, null); });
+                    box.appendChild(go);
+                });
+            }
+
             function showPeople(config) {
                 const box = page.querySelector('#jmcPeople');
                 const who = page.querySelector('#jmcExportWho');
+                const importWho = page.querySelector('#jmcImportWho');
                 box.innerHTML = '';
                 who.innerHTML = '';
+                importWho.innerHTML = '';
                 const everyone = document.createElement('option');
                 everyone.value = 'all';
                 everyone.textContent = 'Everyone';
@@ -169,6 +332,7 @@
                     option.value = user.Id;
                     option.textContent = user.Name;
                     who.appendChild(option);
+                    importWho.appendChild(option.cloneNode(true));
                 });
             }
 
@@ -181,6 +345,7 @@
                     switches.forEach(function (id) { page.querySelector('#' + id).checked = config[id]; });
                     showPeople(config);
                     showStatus();
+                    showImports();
                     Dashboard.hideLoadingMsg();
                 });
             }
@@ -235,6 +400,15 @@
                 });
             });
             page.querySelector('#jmcExportCsv').addEventListener('click', function () { exportHistory('csv'); });
+            page.querySelector('#jmcImportPreview').addEventListener('click', function () {
+                const source = page.querySelector('#jmcImportSource').value;
+                const file = page.querySelector('#jmcImportFile').files[0];
+                if (source !== 'jellyfin' && !file) {
+                    Dashboard.alert('Choose the file to import first.');
+                    return;
+                }
+                preview(source, page.querySelector('#jmcImportWho').value, source === 'jellyfin' ? null : file);
+            });
             page.querySelector('#jmcExportJson').addEventListener('click', function () { exportHistory('json'); });
         })();
     </script>
