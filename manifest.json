@@ -1,0 +1,28 @@
+[
+  {
+    "guid": "224d7c95-988f-4534-965f-69a4f6e3d802",
+    "name": "JellyMold Companion",
+    "overview": "Watch history for JellyMold and any other app.",
+    "description": "A permanent record of everything each person watches and listens to on this server, readable by each person from an app. Survives media being deleted from the library; never deletes history.",
+    "owner": "darkejon",
+    "category": "General",
+    "versions": [
+      {
+        "version": "12.0.1.0",
+        "changelog": "First release: records every playback per person, the stats summary, history, change feed, offline sessions, export, nightly backups.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.1.0/jellymold-companion_12.0.1.0.zip",
+        "checksum": "3ffcdc760a3ddf0f0256e1f21531f22a",
+        "timestamp": "2026-10-30T17:19:52Z"
+      },
+      {
+        "version": "10.0.1.0",
+        "changelog": "First release: records every playback per person, the stats summary, history, change feed, offline sessions, export, nightly backups.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.1.0/jellymold-companion_10.0.1.0.zip",
+        "checksum": "d1c17c1fc67a1f7d7b71aa6654257536",
+        "timestamp": "2026-10-30T17:19:52Z"
+      }
+    ]
+  }
+]
