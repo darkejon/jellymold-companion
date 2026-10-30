@@ -1,0 +1,48 @@
+<Project>
+  <!--
+    Shared by every project. The plugin's version lives here and nowhere else; the packaging script reads it.
+
+    Two builds come out of one codebase (docs/design.md §13a):
+      net8.0  → Jellyfin 10.10.7  (JRDisk)
+      net10.0 → Jellyfin 12.1.0   (current Jellyfin, and the local test server)
+    `JELLYFIN_10_10` / `JELLYFIN_12` are defined per target so the few places the two differ can say so.
+  -->
+  <!--
+    The release, as people talk about it. Each build's own version puts the Jellyfin major version first —
+    10.0.1.0 for the 10.10 build, 12.0.1.0 for the 12 build — because Jellyfin installs the highest version whose
+    targetAbi it meets, with no upper bound: without that, a 12 server would be offered the 10.10 build.
+  -->
+  <PropertyGroup>
+    <ReleaseVersion>0.1.0</ReleaseVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Authors>Jon Darke</Authors>
+    <Company>Virtue Apps</Company>
+    <Product>JellyMold Companion</Product>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <DefineConstants>$(DefineConstants);JELLYFIN_10_10</DefineConstants>
+    <JellyfinVersion>10.10.7</JellyfinVersion>
+    <JellyfinTargetAbi>10.10.7.0</JellyfinTargetAbi>
+    <Version>10.$(ReleaseVersion)</Version>
+    <!-- What each Jellyfin itself ships (its Directory.Packages.props). Referenced, never shipped. -->
+    <SqliteVersion>8.0.11</SqliteVersion>
+    <ExtensionsVersion>8.0.2</ExtensionsVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <DefineConstants>$(DefineConstants);JELLYFIN_12</DefineConstants>
+    <JellyfinVersion>12.1.0</JellyfinVersion>
+    <JellyfinTargetAbi>12.1.0.0</JellyfinTargetAbi>
+    <Version>12.$(ReleaseVersion)</Version>
+    <SqliteVersion>10.0.11</SqliteVersion>
+    <ExtensionsVersion>10.0.11</ExtensionsVersion>
+  </PropertyGroup>
+</Project>

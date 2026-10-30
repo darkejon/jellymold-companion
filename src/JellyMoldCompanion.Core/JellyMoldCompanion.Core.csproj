@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The counting rules, the database and the queries behind the API — everything that does not need Jellyfin.
+    No Jellyfin types reach this assembly (docs/design.md §2), which is what lets it be tested without a server
+    and shared, unchanged, by both builds.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <RootNamespace>JellyMoldCompanion</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The SQLite Jellyfin already loads (§10.1). `.Core` brings no native library, and runtime assets are
+      excluded so the plugin's zip never carries a second copy: two native SQLite builds in one process is a
+      known way for a plugin to crash a server.
+    -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="$(SqliteVersion)">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <!-- Jellyfin's host provides logging; the plugin only needs the abstractions to compile. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="$(ExtensionsVersion)">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Storage\Migrations\*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="JellyMoldCompanion.Core.Tests" />
+  </ItemGroup>
+
+</Project>
