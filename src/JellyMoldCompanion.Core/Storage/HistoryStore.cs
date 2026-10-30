@@ -565,7 +565,7 @@ public sealed class HistoryStore : IDisposable
     private static string? NullableString(SqliteDataReader reader, int ordinal) =>
         reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
 
-    private SqliteCommand Command(string sql, params (string Name, object? Value)[] parameters)
+    internal SqliteCommand Command(string sql, params (string Name, object? Value)[] parameters)
     {
         var command = _connection.CreateCommand();
         command.CommandText = sql;
@@ -578,13 +578,13 @@ public sealed class HistoryStore : IDisposable
         return command;
     }
 
-    private int Execute(string sql, params (string Name, object? Value)[] parameters)
+    internal int Execute(string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(sql, parameters);
         return command.ExecuteNonQuery();
     }
 
-    private object? Scalar(string sql, params (string Name, object? Value)[] parameters)
+    internal object? Scalar(string sql, params (string Name, object? Value)[] parameters)
     {
         using var command = Command(sql, parameters);
         return command.ExecuteScalar();

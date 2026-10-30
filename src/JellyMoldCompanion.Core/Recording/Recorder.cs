@@ -23,13 +23,15 @@ public sealed class Recorder
     private readonly Dictionary<(string Jellyfin, Guid User), (OpenSession Session, DateTimeOffset ClosedAt)> _idleClosed = [];
 
     private readonly Import.Importer _importer;
+    private readonly Action<IdleStop>? _idleStopped;
 
-    public Recorder(HistoryStore store, Func<CountingRules> rules, Func<RecordingScope> scope, ILogger logger)
+    public Recorder(HistoryStore store, Func<CountingRules> rules, Func<RecordingScope> scope, ILogger logger, Action<IdleStop>? idleStopped = null)
     {
         _store = store;
         _rules = rules;
         _scope = scope;
         _logger = logger;
+        _idleStopped = idleStopped;
         _importer = new Import.Importer(store);
     }
 
@@ -139,6 +141,12 @@ public sealed class Recorder
 
             case ImportUndoRequest undo:
                 undo.Done.TrySetResult(_importer.Undo(undo.ImportId, undo.At));
+                return;
+
+            case WriteRequest write:
+                object? result = null;
+                _store.InTransaction(() => result = write.Work(_store));
+                write.Done.TrySetResult(result);
                 return;
         }
     }
@@ -360,6 +368,8 @@ public sealed class Recorder
                     Close(session, session.Record.LastSeenAt, session.Record.LastTicks, "idle",
                         new { reportedPositionTicks = report.PositionTicks, silentSeconds = (int)silence.TotalSeconds });
                     _idleClosed[key] = (session, report.At);
+                    var r = session.Record;
+                    _idleStopped?.Invoke(new IdleStop(r.UserId, r.ItemId, r.Kind, r.LastTicks, r.FurthestTicks, r.RuntimeTicks));
                     return;
                 }
 

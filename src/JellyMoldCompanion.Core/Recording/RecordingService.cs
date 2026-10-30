@@ -44,6 +44,9 @@ public sealed class RecordingService : IAsyncDisposable
 
     public int OpenSessions => _recorder?.OpenSessionCount ?? 0;
 
+    /// <summary>Told of each idle stop, on the recorder's thread: whatever it does must only schedule work.</summary>
+    public Action<IdleStop>? IdleStopped { get; set; }
+
     public void Start()
     {
         _database.Initialise();
@@ -53,7 +56,7 @@ public sealed class RecordingService : IAsyncDisposable
         }
 
         _store = new HistoryStore(_database);
-        _recorder = new Recorder(_store, _rules, _scope, _logger);
+        _recorder = new Recorder(_store, _rules, _scope, _logger, stop => IdleStopped?.Invoke(stop));
         _recorder.Recover(_time.GetUtcNow());
         _loop = Task.Run(RunAsync);
         _sweep = _time.CreateTimer(_ => Enqueue(new SweepTick(_time.GetUtcNow())), null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
@@ -92,6 +95,18 @@ public sealed class RecordingService : IAsyncDisposable
     public Task<int> Undo(ImportUndoRequest request) =>
         Enqueue(request) ? request.Done.Task : Task.FromException<int>(NotRecording());
 
+    /// <summary>Runs a write on the recorder's thread, in a transaction, and returns what it returned.</summary>
+    public async Task<T> Write<T>(Func<HistoryStore, T> work)
+    {
+        var request = new WriteRequest(_time.GetUtcNow(), store => work(store));
+        if (!Enqueue(request))
+        {
+            throw NotRecording();
+        }
+
+        return (T)(await request.Done.Task.ConfigureAwait(false))!;
+    }
+
     private static Import.ImportException NotRecording() =>
         new("The history database is not open for writing, so nothing can be imported. The settings page says why.");
 
@@ -103,7 +118,7 @@ public sealed class RecordingService : IAsyncDisposable
             {
                 _recorder!.Apply(message);
             }
-            catch (Import.ImportException e)
+            catch (Exception e) when (e is Import.ImportException or AppData.AppDataException)
             {
                 // Asked for something that cannot be done — committing twice, say. The caller is told why.
                 (message as IReplyingMessage)?.Fail(e);

@@ -116,6 +116,22 @@ public class AbandonedSessionTests
     }
 
     [Fact]
+    public void AnIdleStopTellsThePluginWhereTheViewerReallyWas()
+    {
+        using var h = new Harness();
+        var told = new List<IdleStop>();
+        var recorder = new Recorder(h.Store, () => h.Rules, () => RecordingScope.Everything,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, told.Add);
+        var film = Harness.Film();
+        recorder.Apply(h.Report(ReportKind.Start, film, Harness.Tuesday, 0));
+        recorder.Apply(h.Report(ReportKind.Progress, film, Harness.Tuesday.Seconds(600), 600));
+        recorder.Apply(h.Report(ReportKind.Stop, film, Harness.Tuesday.Minutes(18), 600 + 480));
+
+        var stop = Assert.Single(told);
+        Assert.Equal(Harness.Ticks(600), stop.LastPositionTicks);
+    }
+
+    [Fact]
     public void AClientStopAfterAPauseIsNotAnIdleStop()
     {
         using var h = new Harness();

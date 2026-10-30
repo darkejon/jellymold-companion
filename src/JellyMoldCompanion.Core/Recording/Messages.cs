@@ -85,6 +85,12 @@ public sealed record LibraryItemRemoved(DateTimeOffset At, Guid ItemId) : Record
 
 public sealed record JellyfinUserDeleted(DateTimeOffset At, Guid UserId) : RecorderMessage(At);
 
+/// <summary>
+/// Told when Jellyfin's idle timer has stopped a play the client abandoned (§6.1): where the viewer really was, so the
+/// plugin can put Jellyfin's resume point back if asked to (§16 idea 10).
+/// </summary>
+public sealed record IdleStop(Guid UserId, Guid ItemId, MediaKind Kind, long LastPositionTicks, long FurthestTicks, long? RuntimeTicks);
+
 /// <summary>Sent by the recorder's own timer: close what nothing else will (design §4, the sweeper).</summary>
 public sealed record SweepTick(DateTimeOffset At) : RecorderMessage(At);
 
@@ -124,6 +130,17 @@ public sealed record ImportCommitRequest(DateTimeOffset At, Guid ImportId) : Rec
 public sealed record ImportUndoRequest(DateTimeOffset At, Guid ImportId) : RecorderMessage(At), IReplyingMessage
 {
     public TaskCompletionSource<int> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Fail(Exception error) => Done.TrySetException(error);
+}
+
+/// <summary>
+/// Any other write — the app's documents, quiz scores, segments — done on the recorder's thread so there is still one
+/// writer (§2), inside a transaction that stamps the change counter. The answer comes back through <see cref="Done"/>.
+/// </summary>
+public sealed record WriteRequest(DateTimeOffset At, Func<Storage.HistoryStore, object?> Work) : RecorderMessage(At), IReplyingMessage
+{
+    public TaskCompletionSource<object?> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public void Fail(Exception error) => Done.TrySetException(error);
 }
