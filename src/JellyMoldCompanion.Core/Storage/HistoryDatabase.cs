@@ -15,7 +15,7 @@ namespace JellyMoldCompanion.Storage;
 public sealed partial class HistoryDatabase
 {
     /// <summary>The newest schema this build understands. One migration script per version.</summary>
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 
     public const string FileName = "history.db";
 

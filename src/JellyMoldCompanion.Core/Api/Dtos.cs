@@ -26,6 +26,8 @@ public sealed record ItemRef
     public IReadOnlyDictionary<string, string> SeriesProviderIds { get; init; } = new Dictionary<string, string>();
     public bool InLibrary { get; init; }
     public DateTime? RemovedAt { get; init; }
+    /// <summary><c>Library</c>, or <c>Import</c> for media only an import mentioned — perhaps never on this server.</summary>
+    public string Origin { get; init; } = "Library";
 }
 
 /// <summary>One entry in the history: a viewing, or for music and audiobooks a listen.</summary>
@@ -36,7 +38,7 @@ public sealed record HistoryEntry
     /// <summary><c>Played</c>, <c>Marked</c> or <c>Imported</c>.</summary>
     public required string Kind { get; init; }
     public required string Source { get; init; }
-    /// <summary><c>InProgress</c>, <c>Completed</c>, <c>Abandoned</c> — or, in the change feed only, <c>Retracted</c> and <c>Undone</c>.</summary>
+    /// <summary><c>InProgress</c>, <c>Completed</c>, <c>Abandoned</c> — or, in the change feed only, <c>Retracted</c>, <c>Undone</c> and <c>Superseded</c>.</summary>
     public required string Status { get; init; }
     public required DateTime StartedAt { get; init; }
     public required DateTime LastActivityAt { get; init; }

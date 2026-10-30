@@ -22,12 +22,15 @@ public sealed class Recorder
     /// <summary>Plays Jellyfin's idle timer stopped recently, kept so a client that comes back can carry on (§6.1).</summary>
     private readonly Dictionary<(string Jellyfin, Guid User), (OpenSession Session, DateTimeOffset ClosedAt)> _idleClosed = [];
 
+    private readonly Import.Importer _importer;
+
     public Recorder(HistoryStore store, Func<CountingRules> rules, Func<RecordingScope> scope, ILogger logger)
     {
         _store = store;
         _rules = rules;
         _scope = scope;
         _logger = logger;
+        _importer = new Import.Importer(store);
     }
 
     private CountingRules Rules => _rules();
@@ -124,6 +127,18 @@ public sealed class Recorder
                 IReadOnlyList<Api.ClientSessionOutcome> outcomes = [];
                 _store.InTransaction(() => outcomes = ApplyClientSessions(submission));
                 submission.Done.TrySetResult(outcomes);
+                return;
+
+            case ImportPreviewRequest preview:
+                preview.Done.TrySetResult(_importer.Preview(preview.Source, preview.UserId, preview.UserName, preview.Candidates, preview.Notes, preview.At));
+                return;
+
+            case ImportCommitRequest commit:
+                commit.Done.TrySetResult(_importer.Commit(commit.ImportId, commit.At));
+                return;
+
+            case ImportUndoRequest undo:
+                undo.Done.TrySetResult(_importer.Undo(undo.ImportId, undo.At));
                 return;
         }
     }

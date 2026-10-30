@@ -88,6 +88,46 @@ public sealed record JellyfinUserDeleted(DateTimeOffset At, Guid UserId) : Recor
 /// <summary>Sent by the recorder's own timer: close what nothing else will (design §4, the sweeper).</summary>
 public sealed record SweepTick(DateTimeOffset At) : RecorderMessage(At);
 
+/// <summary>A message someone is waiting on an answer to: told when the recorder could not apply it.</summary>
+public interface IReplyingMessage
+{
+    void Fail(Exception error);
+}
+
+/// <summary>Check an import's candidates against what is recorded, keep them, and report what a commit would do (§8.1).</summary>
+public sealed record ImportPreviewRequest(DateTimeOffset At) : RecorderMessage(At), IReplyingMessage
+{
+    public required string Source { get; init; }
+
+    /// <summary>The person it is for; null for a server-wide import (Playback Reporting).</summary>
+    public Guid? UserId { get; init; }
+
+    /// <summary>Their name, so an import with nothing in it still says whose it was.</summary>
+    public string? UserName { get; init; }
+
+    public required IReadOnlyList<Import.ImportCandidate> Candidates { get; init; }
+
+    public IReadOnlyList<string> Notes { get; init; } = [];
+
+    public TaskCompletionSource<Import.ImportReport> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Fail(Exception error) => Done.TrySetException(error);
+}
+
+public sealed record ImportCommitRequest(DateTimeOffset At, Guid ImportId) : RecorderMessage(At), IReplyingMessage
+{
+    public TaskCompletionSource<Import.ImportReport> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Fail(Exception error) => Done.TrySetException(error);
+}
+
+public sealed record ImportUndoRequest(DateTimeOffset At, Guid ImportId) : RecorderMessage(At), IReplyingMessage
+{
+    public TaskCompletionSource<int> Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void Fail(Exception error) => Done.TrySetException(error);
+}
+
 /// <summary>Drop progress samples older than <see cref="Before"/> — diagnostics, kept 30 days by default (§3).</summary>
 public sealed record TrimSamples(DateTimeOffset At, DateTimeOffset Before) : RecorderMessage(At);
 
@@ -95,8 +135,10 @@ public sealed record TrimSamples(DateTimeOffset At, DateTimeOffset Before) : Rec
 /// Watching an app did offline, posted afterwards (§6.3, §9.3). Goes through the recorder's queue like everything
 /// else, so it is ordered with live reports; the answer comes back through <see cref="Done"/>.
 /// </summary>
-public sealed record ClientSessionSubmission(DateTimeOffset At) : RecorderMessage(At)
+public sealed record ClientSessionSubmission(DateTimeOffset At) : RecorderMessage(At), IReplyingMessage
 {
+    public void Fail(Exception error) => Done.TrySetException(error);
+
     public required RecordedUser User { get; init; }
 
     /// <summary>Each session, with the item as the library has it now — null when it has gone from the library.</summary>

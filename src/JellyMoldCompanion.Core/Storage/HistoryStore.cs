@@ -31,7 +31,9 @@ public sealed class HistoryStore : IDisposable
         ? throw new InvalidOperationException("Writes happen inside InTransaction.")
         : _seq;
 
-    public void InTransaction(Action work)
+    /// <param name="commit">False runs the work and rolls it back — an import's preview (§8.1), which does exactly
+    /// what its commit would and keeps nothing.</param>
+    public void InTransaction(Action work, bool commit = true)
     {
         _transaction = _connection.BeginTransaction();
         try
@@ -39,7 +41,14 @@ public sealed class HistoryStore : IDisposable
             _seq = Convert.ToInt64(Scalar("SELECT value FROM meta WHERE key = 'change_seq';"), CultureInfo.InvariantCulture) + 1;
             Execute("UPDATE meta SET value = $seq WHERE key = 'change_seq';", ("$seq", _seq.ToString(CultureInfo.InvariantCulture)));
             work();
-            _transaction.Commit();
+            if (commit)
+            {
+                _transaction.Commit();
+            }
+            else
+            {
+                _transaction.Rollback();
+            }
         }
         catch
         {
@@ -67,20 +76,38 @@ public sealed class HistoryStore : IDisposable
         "UPDATE users SET deleted_at = $at WHERE user_id = $id AND deleted_at IS NULL;",
         ("$id", Id(userId)), ("$at", Ms(at)));
 
+    /// <summary>When live recording began for this person: the cutover (§8). Null for someone never seen.</summary>
+    public DateTimeOffset? RecordingSince(Guid userId) => Scalar(
+        "SELECT recording_since FROM users WHERE user_id = $id;", ("$id", Id(userId))) is long ms ? FromMs(ms) : null;
+
     // — What items were —
+
+    private const string MediaInsert = """
+        INSERT {0} INTO media (item_id, kind, name, original_title, production_year, premiere_date, runtime_ticks,
+            series_id, series_name, season_id, season_name, season_number, episode_number, episode_number_end,
+            album_id, album_name, artists, album_artists, track_number, disc_number,
+            provider_ids, series_provider_ids, library_id, library_name, first_seen_at, updated_at, removed_at, origin)
+        VALUES ($item, $kind, $name, $original, $year, $premiere, $runtime,
+            $series, $seriesName, $season, $seasonName, $seasonNumber, $episode, $episodeEnd,
+            $album, $albumName, $artists, $albumArtists, $track, $disc,
+            $providers, $seriesProviders, $library, $libraryName, $at, $at, NULL, $origin)
+        """;
+
+    /// <summary>
+    /// Something an import names that this library does not have (§8.1) — kept with what the source knew, and never
+    /// written over a richer record already there.
+    /// </summary>
+    public void InsertMediaIfMissing(MediaSnapshot item, DateTimeOffset at, string origin)
+    {
+        Execute(string.Format(CultureInfo.InvariantCulture, MediaInsert, "OR IGNORE") + ";", MediaParameters(item, at, origin));
+        InsertKeys(item);
+    }
 
     public void UpsertMedia(MediaSnapshot item, DateTimeOffset at)
     {
         Execute(
-            """
-            INSERT INTO media (item_id, kind, name, original_title, production_year, premiere_date, runtime_ticks,
-                series_id, series_name, season_id, season_name, season_number, episode_number, episode_number_end,
-                album_id, album_name, artists, album_artists, track_number, disc_number,
-                provider_ids, series_provider_ids, library_id, library_name, first_seen_at, updated_at, removed_at)
-            VALUES ($item, $kind, $name, $original, $year, $premiere, $runtime,
-                $series, $seriesName, $season, $seasonName, $seasonNumber, $episode, $episodeEnd,
-                $album, $albumName, $artists, $albumArtists, $track, $disc,
-                $providers, $seriesProviders, $library, $libraryName, $at, $at, NULL)
+            string.Format(CultureInfo.InvariantCulture, MediaInsert, string.Empty) + """
+
             ON CONFLICT (item_id) DO UPDATE SET
                 kind = excluded.kind, name = excluded.name, original_title = excluded.original_title,
                 production_year = excluded.production_year, premiere_date = excluded.premiere_date,
@@ -94,26 +121,35 @@ public sealed class HistoryStore : IDisposable
                 series_provider_ids = excluded.series_provider_ids,
                 library_id = COALESCE(excluded.library_id, media.library_id),
                 library_name = COALESCE(excluded.library_name, media.library_name),
-                updated_at = excluded.updated_at, removed_at = NULL;
+                updated_at = excluded.updated_at, removed_at = NULL, origin = NULL;
             """,
-            ("$item", Id(item.ItemId)), ("$kind", StoredNames.Of(item.Kind)), ("$name", item.Name),
-            ("$original", item.OriginalTitle), ("$year", item.ProductionYear),
-            ("$premiere", item.PremiereDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-            ("$runtime", item.RuntimeTicks is > 0 ? item.RuntimeTicks : null),
-            ("$series", Id(item.SeriesId)), ("$seriesName", item.SeriesName), ("$season", Id(item.SeasonId)),
-            ("$seasonName", item.SeasonName), ("$seasonNumber", item.SeasonNumber), ("$episode", item.EpisodeNumber),
-            ("$episodeEnd", item.EpisodeNumberEnd), ("$album", Id(item.AlbumId)), ("$albumName", item.AlbumName),
-            ("$artists", Json(item.Artists)), ("$albumArtists", Json(item.AlbumArtists)),
-            ("$track", item.TrackNumber), ("$disc", item.DiscNumber),
-            ("$providers", Json(item.ProviderIds)), ("$seriesProviders", Json(item.SeriesProviderIds)),
-            ("$library", Id(item.LibraryId)), ("$libraryName", item.LibraryName), ("$at", Ms(at)));
+            MediaParameters(item, at, origin: null));
+        InsertKeys(item);
+    }
 
+    private void InsertKeys(MediaSnapshot item)
+    {
         foreach (var key in MediaKeys.For(item))
         {
             Execute("INSERT OR IGNORE INTO media_keys (item_id, key) VALUES ($item, $key);",
                 ("$item", Id(item.ItemId)), ("$key", key));
         }
     }
+
+    private static (string, object?)[] MediaParameters(MediaSnapshot item, DateTimeOffset at, string? origin) =>
+    [
+        ("$item", Id(item.ItemId)), ("$kind", StoredNames.Of(item.Kind)), ("$name", item.Name),
+        ("$original", item.OriginalTitle), ("$year", item.ProductionYear),
+        ("$premiere", item.PremiereDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+        ("$runtime", item.RuntimeTicks is > 0 ? item.RuntimeTicks : null),
+        ("$series", Id(item.SeriesId)), ("$seriesName", item.SeriesName), ("$season", Id(item.SeasonId)),
+        ("$seasonName", item.SeasonName), ("$seasonNumber", item.SeasonNumber), ("$episode", item.EpisodeNumber),
+        ("$episodeEnd", item.EpisodeNumberEnd), ("$album", Id(item.AlbumId)), ("$albumName", item.AlbumName),
+        ("$artists", Json(item.Artists)), ("$albumArtists", Json(item.AlbumArtists)),
+        ("$track", item.TrackNumber), ("$disc", item.DiscNumber),
+        ("$providers", Json(item.ProviderIds)), ("$seriesProviders", Json(item.SeriesProviderIds)),
+        ("$library", Id(item.LibraryId)), ("$libraryName", item.LibraryName), ("$at", Ms(at)), ("$origin", origin),
+    ];
 
     /// <summary>
     /// *Deleted from the library on…* — for the item and, because Jellyfin sends one removal for a whole series,
@@ -304,7 +340,8 @@ public sealed class HistoryStore : IDisposable
             completed_by = excluded.completed_by, furthest_ticks = excluded.furthest_ticks,
             runtime_ticks = excluded.runtime_ticks, actual_seconds = excluded.actual_seconds,
             wall_seconds = excluded.wall_seconds, credited_seconds = excluded.credited_seconds,
-            superseded_by = excluded.superseded_by, rule = excluded.rule, updated_seq = excluded.updated_seq;
+            superseded_by = excluded.superseded_by, rule = excluded.rule, import_id = excluded.import_id,
+            updated_seq = excluded.updated_seq;
         """,
         ("$id", Id(v.ViewingId)), ("$user", Id(v.UserId)), ("$item", Id(v.ItemId)), ("$kind", StoredNames.Of(v.Kind)),
         ("$source", v.Source), ("$import", Id(v.ImportId)), ("$sourceKey", v.SourceKey),
@@ -342,6 +379,90 @@ public sealed class HistoryStore : IDisposable
              ORDER BY v.started_at DESC LIMIT 1;
             """,
         ("$user", Id(userId)), ("$item", Id(itemId)), ("$since", Ms(since))).FirstOrDefault();
+
+    // — Imports (§8) —
+
+    /// <summary>The record an import made for this source key, in any status — undone ones included.</summary>
+    public ViewingRecord? ViewingBySourceKey(string source, Guid userId, string sourceKey) => ReadViewings(
+        ViewingSelect + " WHERE v.source = $source AND v.user_id = $user AND v.source_key = $key;",
+        ("$source", source), ("$user", Id(userId)), ("$key", sourceKey)).FirstOrDefault();
+
+    /// <summary>
+    /// The counted viewing of the same media nearest the given moment, within the window — the one an imported record
+    /// might be a second account of (§8.1).
+    /// </summary>
+    public ViewingRecord? NearbyViewing(Guid userId, Guid itemId, IReadOnlyList<string> keys, DateTimeOffset when,
+        TimeSpan window, Guid excluding)
+    {
+        var (keyClause, parameters) = KeyMatch("v.item_id", keys, ("$user", Id(userId)), ("$item", Id(itemId)),
+            ("$when", Ms(when)), ("$window", (long)window.TotalMilliseconds), ("$excluding", Id(excluding)));
+        return ReadViewings(
+            ViewingSelect + $"""
+                 WHERE v.user_id = $user AND v.status IN ('in-progress', 'completed', 'abandoned')
+                   AND v.superseded_by IS NULL AND v.viewing_id <> $excluding
+                   AND (v.item_id = $item{keyClause})
+                   AND ABS(COALESCE(v.completed_at, v.last_activity_at) - $when) <= $window
+                 ORDER BY ABS(COALESCE(v.completed_at, v.last_activity_at) - $when) LIMIT 1;
+                """,
+            parameters).FirstOrDefault();
+    }
+
+    public IReadOnlyList<ViewingRecord> ViewingsOfImport(Guid importId) => ReadViewings(
+        ViewingSelect + " WHERE v.import_id = $import;", ("$import", Id(importId)));
+
+    public IReadOnlyList<ViewingRecord> ViewingsSupersededBy(IReadOnlyList<Guid> viewingIds)
+    {
+        if (viewingIds.Count == 0)
+        {
+            return [];
+        }
+
+        var names = viewingIds.Select((_, i) => "$v" + i.ToString(CultureInfo.InvariantCulture)).ToList();
+        return ReadViewings(
+            ViewingSelect + $" WHERE v.superseded_by IN ({string.Join(", ", names)});",
+            viewingIds.Select((id, i) => (names[i], (object?)Id(id))).ToArray());
+    }
+
+    /// <summary>Whether a viewing's sessions count — they stop when it is superseded or its import undone.</summary>
+    public void SetSessionsCounted(Guid viewingId, bool counted) => Execute(
+        "UPDATE sessions SET counted = $counted, updated_seq = $seq WHERE viewing_id = $viewing;",
+        ("$counted", counted ? 1 : 0), ("$seq", CurrentSeq), ("$viewing", Id(viewingId)));
+
+    public sealed record ImportRow(Guid ImportId, string Source, Guid? UserId, DateTimeOffset CreatedAt,
+        DateTimeOffset? CommittedAt, DateTimeOffset? UndoneAt, string? Detail, string? Candidates);
+
+    public void SaveImport(Guid importId, string source, Guid? userId, DateTimeOffset at, string candidates, string detail) => Execute(
+        """
+        INSERT INTO imports (import_id, source, user_id, created_at, detail, candidates)
+        VALUES ($id, $source, $user, $at, $detail, $candidates);
+        """,
+        ("$id", Id(importId)), ("$source", source), ("$user", Id(userId)), ("$at", Ms(at)), ("$detail", detail),
+        ("$candidates", candidates));
+
+    public ImportRow? GetImport(Guid importId)
+    {
+        using var command = Command(
+            "SELECT import_id, source, user_id, created_at, committed_at, undone_at, detail, candidates FROM imports WHERE import_id = $id;",
+            ("$id", Id(importId)));
+        using var r = command.ExecuteReader();
+        return r.Read()
+            ? new ImportRow(Guid.Parse(r.GetString(0)), r.GetString(1), r.IsDBNull(2) ? null : Guid.Parse(r.GetString(2)),
+                FromMs(r.GetInt64(3)), r.IsDBNull(4) ? null : FromMs(r.GetInt64(4)), r.IsDBNull(5) ? null : FromMs(r.GetInt64(5)),
+                NullableString(r, 6), NullableString(r, 7))
+            : null;
+    }
+
+    /// <summary>Whether this person's install-time baseline from Jellyfin's own watch state has been taken (§8.2).</summary>
+    public bool HasCommittedImport(string source, Guid userId) => Convert.ToInt64(Scalar(
+        "SELECT COUNT(*) FROM imports WHERE source = $source AND user_id = $user AND committed_at IS NOT NULL;",
+        ("$source", source), ("$user", Id(userId))), CultureInfo.InvariantCulture) > 0;
+
+    public void SetImportCommitted(Guid importId, DateTimeOffset at, string detail) => Execute(
+        "UPDATE imports SET committed_at = $at, detail = $detail WHERE import_id = $id;",
+        ("$id", Id(importId)), ("$at", Ms(at)), ("$detail", detail));
+
+    public void SetImportUndone(Guid importId, DateTimeOffset at) => Execute(
+        "UPDATE imports SET undone_at = $at WHERE import_id = $id;", ("$id", Id(importId)), ("$at", Ms(at)));
 
     private const string ViewingSelect = """
         SELECT v.viewing_id, v.user_id, v.item_id, v.kind, v.source, v.import_id, v.source_key, v.status,

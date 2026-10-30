@@ -83,6 +83,18 @@ public sealed class RecordingService : IAsyncDisposable
         return submission.Done.Task;
     }
 
+    public Task<Import.ImportReport> Preview(ImportPreviewRequest request) =>
+        Enqueue(request) ? request.Done.Task : Task.FromException<Import.ImportReport>(NotRecording());
+
+    public Task<Import.ImportReport> Commit(ImportCommitRequest request) =>
+        Enqueue(request) ? request.Done.Task : Task.FromException<Import.ImportReport>(NotRecording());
+
+    public Task<int> Undo(ImportUndoRequest request) =>
+        Enqueue(request) ? request.Done.Task : Task.FromException<int>(NotRecording());
+
+    private static Import.ImportException NotRecording() =>
+        new("The history database is not open for writing, so nothing can be imported. The settings page says why.");
+
     private async Task RunAsync()
     {
         await foreach (var message in _queue.Reader.ReadAllAsync().ConfigureAwait(false))
@@ -91,13 +103,15 @@ public sealed class RecordingService : IAsyncDisposable
             {
                 _recorder!.Apply(message);
             }
+            catch (Import.ImportException e)
+            {
+                // Asked for something that cannot be done — committing twice, say. The caller is told why.
+                (message as IReplyingMessage)?.Fail(e);
+            }
             catch (Exception e)
             {
                 _logger.LogError(e, "JellyMold Companion could not record {Message}", message.GetType().Name);
-                if (message is ClientSessionSubmission submission)
-                {
-                    submission.Done.TrySetException(e);
-                }
+                (message as IReplyingMessage)?.Fail(e);
             }
             finally
             {

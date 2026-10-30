@@ -619,6 +619,44 @@ public sealed class HistoryQueries
     private static string Csv(string value) =>
         value.IndexOfAny([',', '"', '\n', '\r']) >= 0 ? "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"" : value;
 
+    // — Imports (§8) —
+
+    public sealed record ImportInfo(Guid Id, string Source, Guid? UserId, string? UserName, DateTime CreatedAt,
+        DateTime? CommittedAt, DateTime? UndoneAt, Import.ImportReport? Report);
+
+    /// <summary>Imports, newest first: one person's, or — with no person — every import, server-wide ones included.</summary>
+    public IReadOnlyList<ImportInfo> Imports(Guid? userId)
+    {
+        using var c = _database.Open(readOnly: true);
+        using var cmd = Command(c, $"""
+            SELECT i.import_id, i.source, i.user_id, u.name, i.created_at, i.committed_at, i.undone_at, i.detail
+            FROM imports i LEFT JOIN users u ON u.user_id = i.user_id
+            {(userId is null ? string.Empty : "WHERE i.user_id = $u")}
+            ORDER BY i.created_at DESC LIMIT 200;
+            """, ("$u", Id(userId)));
+        using var r = cmd.ExecuteReader();
+        var list = new List<ImportInfo>();
+        while (r.Read())
+        {
+            list.Add(new ImportInfo(Guid.Parse(r.GetString(0)), r.GetString(1), NullableGuid(r, 2), NullableString(r, 3),
+                Time(r.GetInt64(4)), r.IsDBNull(5) ? null : Time(r.GetInt64(5)), r.IsDBNull(6) ? null : Time(r.GetInt64(6)),
+                r.IsDBNull(7) ? null : JsonSerializer.Deserialize<Import.ImportReport>(r.GetString(7))));
+        }
+
+        return list;
+    }
+
+    public ImportInfo? ImportById(Guid importId) => Imports(null).FirstOrDefault(i => i.Id == importId);
+
+    /// <summary>Whether this person already has a committed import from this source — for the baseline, whether it has been taken (§8.2).</summary>
+    public bool HasCommittedImport(string source, Guid userId)
+    {
+        using var c = _database.Open(readOnly: true);
+        return Convert.ToInt64(ScalarOf(c,
+            "SELECT COUNT(*) FROM imports WHERE source = $s AND user_id = $u AND committed_at IS NOT NULL;",
+            ("$s", source), ("$u", Id(userId))), CultureInfo.InvariantCulture) > 0;
+    }
+
     // — Database health, for the admin page (§11) —
 
     public sealed record DatabaseStatus(long Viewings, long Sessions, long Events, long Samples, long People, long Items, long Bytes);
@@ -636,13 +674,14 @@ public sealed class HistoryQueries
     private const string MediaColumns = """
         m.item_id, m.kind, m.name, m.original_title, m.production_year, m.runtime_ticks, m.series_id, m.series_name,
         m.season_id, m.season_number, m.episode_number, m.episode_number_end, m.album_id, m.album_name, m.artists,
-        m.album_artists, m.provider_ids, m.series_provider_ids, m.removed_at
+        m.album_artists, m.provider_ids, m.series_provider_ids, m.removed_at, m.origin
         """;
 
-    private const int MediaColumnCount = 19;
+    private const int MediaColumnCount = 20;
 
+    // A superseded entry reads as such (the change feed passes it on as a removal); everywhere else filters it out.
     private const string EntryColumns = """
-        v.viewing_id, v.kind, v.source, v.status, v.started_at, v.last_activity_at, v.completed_at, v.completed_by,
+        v.viewing_id, v.kind, v.source, CASE WHEN v.superseded_by IS NOT NULL THEN 'superseded' ELSE v.status END, v.started_at, v.last_activity_at, v.completed_at, v.completed_by,
         v.furthest_ticks, v.actual_seconds, v.wall_seconds, v.credited_seconds, v.estimated,
         (SELECT COUNT(*) FROM viewings v2 WHERE v2.user_id = v.user_id AND v2.item_id = v.item_id AND v2.started_at <= v.started_at
             AND v2.status IN ('in-progress', 'completed', 'abandoned') AND v2.superseded_by IS NULL) AS ordinal,
@@ -716,7 +755,9 @@ public sealed class HistoryQueries
         ProviderIds = JsonMap(NullableString(r, o + 16)),
         SeriesProviderIds = JsonMap(NullableString(r, o + 17)),
         RemovedAt = r.IsDBNull(o + 18) ? null : Time(r.GetInt64(o + 18)),
-        InLibrary = r.IsDBNull(o + 18),
+        // In the library now: never removed, and not something only an import mentioned.
+        InLibrary = r.IsDBNull(o + 18) && r.IsDBNull(o + 19),
+        Origin = r.IsDBNull(o + 19) ? "Library" : "Import",
     };
 
     private const string SessionSelect = """

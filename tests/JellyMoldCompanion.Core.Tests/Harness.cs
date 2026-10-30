@@ -148,6 +148,13 @@ public sealed class Harness : IDisposable
             PositionTicks = Ticks(position),
         });
 
+    /// <summary>
+    /// The answer to a message the recorder has already applied. <see cref="Recorder.Apply"/> is synchronous, so its
+    /// answers are always in by the time a test asks.
+    /// </summary>
+    public static T Answer<T>(Task<T> task) =>
+        task.IsCompleted ? task.GetAwaiter().GetResult() : throw new InvalidOperationException("The recorder has not answered.");
+
     // — Reading back —
 
     public sealed record ViewingRow(string Id, string ItemId, string Kind, string Status, string? CompletedBy,
