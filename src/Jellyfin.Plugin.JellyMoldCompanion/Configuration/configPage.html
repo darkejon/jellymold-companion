@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JellyMold Companion</title>
+</head>
+<body>
+<div id="JellyMoldCompanionPage" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">JellyMold Companion</h2>
+                <p class="fieldDescription">A permanent record of everything each person watches and listens to on
+                    this server. Each person can read their own history from an app; admins can read everyone's.
+                    History is never deleted by the plugin.</p>
+                <div id="jmcStatus" class="fieldDescription">Checking…</div>
+            </div>
+
+            <form id="JellyMoldCompanionForm">
+
+                <div class="verticalSection">
+                    <h3 class="sectionTitle">What to record</h3>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordMovies"><span>Films</span></label></div>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordEpisodes"><span>Episodes</span></label></div>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordVideos"><span>Other videos</span></label></div>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordMusic"><span>Music</span></label></div>
+                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordAudioBooks"><span>Audiobooks</span></label></div>
+                    <div class="fieldDescription">Trailers, theme music, extras and Live TV are never recorded.</div>
+                </div>
+
+                <div class="verticalSection">
+                    <h3 class="sectionTitle">Who to record</h3>
+                    <div id="jmcPeople"></div>
+                    <div class="fieldDescription">Everyone is recorded unless unticked here. Unticking someone stops new
+                        recording; what is already recorded stays.</div>
+                </div>
+
+                <div class="verticalSection">
+                    <h3 class="sectionTitle">Counting</h3>
+                    <div id="jmcCompletion" class="fieldDescription"></div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="MinimumVideoSeconds" min="0" max="3600" label="Shortest film or episode play that counts (seconds)">
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="MinimumMusicSeconds" min="0" max="600" label="Shortest song play that counts (seconds)">
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="MinimumAudioBookSeconds" min="0" max="3600" label="Shortest audiobook play that counts (seconds)">
+                    </div>
+                    <div class="fieldDescription">Shorter plays are still kept, with their seconds; they just don't count as watching.</div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="AbandonAfterDays" min="1" max="3650" label="Days before something left unfinished counts as given up">
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h3 class="sectionTitle">Keeping</h3>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="SampleRetentionDays" min="0" max="3650" label="Days to keep progress samples (0 keeps them for good)">
+                        <div class="fieldDescription">Samples are the raw position reports, kept for diagnosing problems. The history itself is always kept.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="DailyBackupsToKeep" min="1" max="60" label="Nightly backups to keep">
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="WeeklyBackupsToKeep" min="0" max="52" label="Weekly backups to keep beyond those">
+                    </div>
+                    <div>
+                        <button is="emby-button" type="button" id="jmcBackUpNow" class="raised emby-button"><span>Back up now</span></button>
+                    </div>
+                    <div id="jmcBackups" class="fieldDescription"></div>
+                </div>
+
+                <div class="verticalSection">
+                    <h3 class="sectionTitle">Export</h3>
+                    <div class="selectContainer">
+                        <select is="emby-select" id="jmcExportWho" label="Whose history"></select>
+                    </div>
+                    <button is="emby-button" type="button" class="raised emby-button" data-format="csv" id="jmcExportCsv"><span>Export as CSV</span></button>
+                    <button is="emby-button" type="button" class="raised emby-button" data-format="json" id="jmcExportJson"><span>Export as JSON</span></button>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button"><span>Save</span></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            const pluginId = '224d7c95-988f-4534-965f-69a4f6e3d802';
+            const page = document.querySelector('#JellyMoldCompanionPage');
+            const numbers = ['MinimumVideoSeconds', 'MinimumMusicSeconds', 'MinimumAudioBookSeconds', 'AbandonAfterDays',
+                'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks'];
+            let people = [];
+
+            function api(path) {
+                return ApiClient.getUrl('JellyMold/v1/' + path);
+            }
+
+            function megabytes(bytes) {
+                return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+
+            function text(element, value) {
+                element.textContent = value;
+            }
+
+            function showStatus() {
+                const status = page.querySelector('#jmcStatus');
+                const backups = page.querySelector('#jmcBackups');
+                ApiClient.getJSON(api('Admin/Status')).then(function (s) {
+                    const lines = [];
+                    lines.push(s.Recording ? 'Recording.' : 'Not recording.');
+                    if (s.Problem) {
+                        lines.push(s.Problem);
+                    }
+                    if (s.Counts && s.Counts.Viewings !== undefined) {
+                        lines.push(s.Counts.Viewings + ' viewings and listens, ' + s.Counts.Sessions + ' sessions, '
+                            + s.Counts.People + ' people. Database ' + megabytes(s.Counts.Bytes) + '.');
+                    }
+                    lines.push(s.OpenSessions + ' playing now.');
+                    text(status, lines.join(' '));
+                    text(backups, s.Backups.length
+                        ? 'Latest backup: ' + s.Backups[0].Name + ' (' + megabytes(s.Backups[0].Bytes) + '). ' + s.Backups.length + ' kept.'
+                        : 'No backups yet. The first runs tonight at 03:00, or now with the button above.');
+                }, function () {
+                    text(status, 'The plugin is installed but its status could not be read. Restarting the server usually settles it.');
+                });
+
+                ApiClient.getJSON(api('Info')).then(function (info) {
+                    text(page.querySelector('#jmcCompletion'),
+                        'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time, and an audiobook '
+                        + 'with under ' + info.Rules.AudioBookCompletionMinutesLeft + ' minutes left. These follow the server\'s own '
+                        + 'resume settings (Dashboard → Playback → Resume). A song counts once half of it, or four minutes, has been heard.');
+                });
+            }
+
+            function showPeople(config) {
+                const box = page.querySelector('#jmcPeople');
+                const who = page.querySelector('#jmcExportWho');
+                box.innerHTML = '';
+                who.innerHTML = '';
+                const everyone = document.createElement('option');
+                everyone.value = 'all';
+                everyone.textContent = 'Everyone';
+                who.appendChild(everyone);
+                people.forEach(function (user) {
+                    const container = document.createElement('div');
+                    container.className = 'checkboxContainer';
+                    const label = document.createElement('label');
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.setAttribute('is', 'emby-checkbox');
+                    input.dataset.userId = user.Id;
+                    input.checked = config.ExcludedUserIds.indexOf(user.Id) === -1;
+                    const span = document.createElement('span');
+                    span.textContent = user.Name;
+                    label.appendChild(input);
+                    label.appendChild(span);
+                    container.appendChild(label);
+                    box.appendChild(container);
+
+                    const option = document.createElement('option');
+                    option.value = user.Id;
+                    option.textContent = user.Name;
+                    who.appendChild(option);
+                });
+            }
+
+            function load() {
+                Dashboard.showLoadingMsg();
+                Promise.all([ApiClient.getPluginConfiguration(pluginId), ApiClient.getUsers()]).then(function (results) {
+                    const config = results[0];
+                    people = results[1];
+                    numbers.forEach(function (id) { page.querySelector('#' + id).value = config[id]; });
+                    switches.forEach(function (id) { page.querySelector('#' + id).checked = config[id]; });
+                    showPeople(config);
+                    showStatus();
+                    Dashboard.hideLoadingMsg();
+                });
+            }
+
+            function save(event) {
+                event.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    numbers.forEach(function (id) { config[id] = parseInt(page.querySelector('#' + id).value, 10) || 0; });
+                    switches.forEach(function (id) { config[id] = page.querySelector('#' + id).checked; });
+                    config.ExcludedUserIds = Array.prototype.filter.call(
+                        page.querySelectorAll('#jmcPeople input[type=checkbox]'), function (box) { return !box.checked; })
+                        .map(function (box) { return box.dataset.userId; });
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                });
+                return false;
+            }
+
+            function exportHistory(format) {
+                const who = page.querySelector('#jmcExportWho').value;
+                const query = { format: format };
+                if (who === 'all') {
+                    query.all = true;
+                } else {
+                    query.userId = who;
+                }
+                // The token goes in a header, never in an address.
+                fetch(ApiClient.getUrl('JellyMold/v1/Export', query), {
+                    headers: { 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' }
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(response.statusText);
+                    }
+                    return response.blob();
+                }).then(function (blob) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'jellymold-history.' + format;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                }).catch(function () {
+                    Dashboard.alert('The export could not be made.');
+                });
+            }
+
+            page.addEventListener('pageshow', load);
+            page.querySelector('#JellyMoldCompanionForm').addEventListener('submit', save);
+            page.querySelector('#jmcBackUpNow').addEventListener('click', function () {
+                ApiClient.ajax({ type: 'POST', url: api('Admin/Backups') }).then(showStatus, function () {
+                    Dashboard.alert('The backup could not be made.');
+                });
+            });
+            page.querySelector('#jmcExportCsv').addEventListener('click', function () { exportHistory('csv'); });
+            page.querySelector('#jmcExportJson').addEventListener('click', function () { exportHistory('json'); });
+        })();
+    </script>
+</div>
+</body>
+</html>

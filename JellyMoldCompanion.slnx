@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Jellyfin.Plugin.JellyMoldCompanion/Jellyfin.Plugin.JellyMoldCompanion.csproj" />
+    <Project Path="src/JellyMoldCompanion.Core/JellyMoldCompanion.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JellyMoldCompanion.Core.Tests/JellyMoldCompanion.Core.Tests.csproj" />
+  </Folder>
+</Solution>
