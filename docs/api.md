@@ -245,6 +245,60 @@ sources can be used here and now.
 | `seconds` | Time actually watched, if known |
 | `completed` | `yes` (the default) or `no` |
 
+### The app's own data (design §16)
+
+#### Documents: one person's, and the household's
+
+`/Store/…` is the signed-in person's; `/Household/…` is shared by everyone signed in to the server. The same five
+calls on each:
+
+| | |
+|---|---|
+| `GET /Store?Prefix=quiz-` | The keys there: `{ "Items": [{ "Key", "Version", "Bytes", "UpdatedAt" }] }` |
+| `GET /Store/{key}` | `{ "Key", "Version", "Value", "Deleted": false, "UpdatedAt", "UpdatedBy" }`, with an `ETag` of the version. 404 if none |
+| `PUT /Store/{key}?IfVersion=3` | Writes the body (any JSON, up to 1 MB) **only if the document is still version 3** — or `IfVersion=0` to create. `If-Match: "3"` works too. Answers the new document |
+| `DELETE /Store/{key}?IfVersion=4` | Deletes it, on the same condition. A marker stays, so other devices hear of it |
+| `GET /Store/Changes?Since=<token>` | `{ "Changed": [Document], "Next", "More", "Resync" }` — every document changed since the token, deletions as `Deleted: true` |
+
+- **A clash answers 412** with `{ "Detail", "Current": Document }`: someone else wrote since you read. Merge with your
+  own rules and write again naming `Current.Version`. The server never merges — the rules stay in the app.
+- A write that names no version answers **428**.
+- Keys are 1–128 letters, digits, `.` `_` `:` `-`. At most 5,000 documents and 20 MB a person.
+- Admins may pass `UserId` to `/Store`.
+
+**Agreed keys in the household store**, so every app finds the same things:
+
+| Key | What |
+|---|---|
+| `quiz-round:{itemId}` | A quiz round built for an item, for any device to play — including those without Apple Intelligence |
+| `chapters:{itemId}` | Names for an item's unnamed chapters, made once |
+
+#### Quiz results and the household leaderboard
+
+| | |
+|---|---|
+| `POST /Quiz/Scores` | `{ "Scores": [{ "ScoreId", "ItemId", "ItemName", "SeriesId", "SeriesName", "Season", "Episode", "Score", "OutOf", "CompletedAt" }] }` — finished quizzes, at most 500 a request. `ScoreId` is yours; posting one twice is harmless. Answers `{ "Added" }` |
+| `GET` / `PUT /Quiz/Sharing` | `{ "Shares": true }` — whether this person's results may be shown to the rest of the household. **Off until they say so** |
+| `GET /Quiz/Leaderboard?SeriesId=…` | `{ "Items": [{ "UserId", "Name", "IsYou", "Quizzes", "RightAnswers", "Questions", "Perfect", "LastPlayed" }] }` — the caller always, and everyone who shares, best first. `SeriesId` or `ItemId` for one programme; neither for everything |
+
+#### Learned skip segments
+
+| | |
+|---|---|
+| `POST /Segments` | `{ "Segments": [{ "ItemId", "Kind": "Intro", "StartSeconds": 62, "EndSeconds": 121, "Source": "learned" }] }`. Kinds: `Intro`, `Outro`, `Recap`, `Preview`, `Commercial`; one of each per item. Answers `{ "Saved", "Published" }` |
+| `GET /Items/{itemId}/Segments` | The segments learned for an item |
+| `DELETE /Items/{itemId}/Segments?Kind=Intro` | Admin only. Jellyfin's copy goes too |
+
+Saved segments are published to Jellyfin through the plugin's segment provider, so **every app on the server** shows
+the Skip button (Jellyfin's own `GET /MediaSegments/{itemId}`). Jellyfin adds a provider's segments only to an item
+that has none from another provider yet — learned intros fill gaps, they do not override a chapter-name provider.
+
+### `GET /Home?Limit=16`
+
+The home screen in one request: `{ "ContinueWatching": [BaseItemDto], "NextUp": [BaseItemDto], "Latest": [{ "Library":
+BaseItemDto, "Items": [BaseItemDto] }] }`. The items are **Jellyfin's own item objects**, exactly as its endpoints give
+them, with `ProviderIds`, `UserData` and images — read them with the code that reads Jellyfin.
+
 ### Admin only
 
 - `GET /Admin/Status` — recording or not, any problem in plain words, database size and counts, backups, people.

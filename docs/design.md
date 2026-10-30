@@ -1019,8 +1019,12 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
 
 ### Where the build stands
 
-- **Phase 1** (recording, the API, the database, the settings page) and **Phase 2** (imports) are built, as release
-  0.2.0. Neither is published yet.
+- **Phase 1** (recording, the API, the database, the settings page), **Phase 2** (imports) and **Phase 3** (the §16
+  ideas chosen: 1, 2, 3, 4, 5, 8 and 10) are built, as release 0.3.0. None is published yet.
+- **How Phase 3 landed:** ideas 2 (quiz rounds) and 5 (chapter names) are agreed keys in the household store rather than
+  features of their own, so the server stays a store and the app keeps its rules. Idea 10 applies Jellyfin's own resume
+  rule to the real position, so it undoes the guess and never one of the server's settings. Idea 3 is a nightly task
+  over newly added items, two hundred a night at most.
 - **Not built from Phase 2:** the recovery of already-deleted items from Jellyfin's own watch data (§8.2). It reads an
   interface only Jellyfin 10.10 has, it can recover provider ids but never titles, and it needs a test against a real
   library with deletions in it. Worth doing once on JRDisk's copy of the data, with the maintainer, rather than as a

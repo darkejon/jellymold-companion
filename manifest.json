@@ -8,20 +8,20 @@
     "category": "General",
     "versions": [
       {
-        "version": "12.0.2.0",
-        "changelog": "Phase 2: past history. Each person's baseline from Jellyfin's watch state, taken automatically; Playback Reporting's database; Trakt, Letterboxd and CSV files. Every import previews first and can be undone. Includes everything from Phase 1.",
+        "version": "12.0.3.0",
+        "changelog": "Phase 3: a store for each person and the household, quiz results and a household leaderboard, learned skip segments for every app, putting the resume point back after an app vanishes (Jellyfin 10.10), subtitles prepared ahead, and the home screen in one request. Includes Phases 1 and 2.",
         "targetAbi": "12.1.0.0",
-        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.2.0/jellymold-companion_12.0.2.0.zip",
-        "checksum": "b2bf43379804a8622c3e4bb89d8d4fcf",
-        "timestamp": "2026-10-30T19:15:46Z"
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.3.0/jellymold-companion_12.0.3.0.zip",
+        "checksum": "33088bcf91d88a016b22f97f9de2f9b7",
+        "timestamp": "2026-10-30T19:59:08Z"
       },
       {
-        "version": "10.0.2.0",
-        "changelog": "Phase 2: past history. Each person's baseline from Jellyfin's watch state, taken automatically; Playback Reporting's database; Trakt, Letterboxd and CSV files. Every import previews first and can be undone. Includes everything from Phase 1.",
+        "version": "10.0.3.0",
+        "changelog": "Phase 3: a store for each person and the household, quiz results and a household leaderboard, learned skip segments for every app, putting the resume point back after an app vanishes (Jellyfin 10.10), subtitles prepared ahead, and the home screen in one request. Includes Phases 1 and 2.",
         "targetAbi": "10.10.7.0",
-        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.2.0/jellymold-companion_10.0.2.0.zip",
-        "checksum": "fc3d3f9a7a7a4a89f74d3662fa7594bc",
-        "timestamp": "2026-10-30T19:15:46Z"
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.3.0/jellymold-companion_10.0.3.0.zip",
+        "checksum": "45e118eae76bee626103605d0480c286",
+        "timestamp": "2026-10-30T19:59:08Z"
       }
     ]
   }

@@ -5,6 +5,8 @@ viewer (the plugin's per-person access needs one to test against), and libraries
 
     tools/setup-test-server.py setup            run once, after `docker-10.10.sh up`
     tools/setup-test-server.py token admin      a fresh token for one of its accounts, for scripts
+    tools/setup-test-server.py token admin idle the same, signed in as a device of its own — signing in again as one
+                                                device replaces that device's earlier token
 
 Test accounts only, on a throwaway container bound to localhost. Their passwords are generated here and kept in
 .docker/jellyfin-10.10/test-users.json (gitignored); nothing secret is printed except a token asked for by
@@ -34,8 +36,9 @@ def call(method, path, body=None, query=None, token=None, who="setup"):
         return json.loads(text) if text else None
 
 
-def sign_in(name, password):
-    return call("POST", "/Users/AuthenticateByName", {"Username": name, "Pw": password}, who=name)["AccessToken"]
+def sign_in(name, password, device=None):
+    who = name if device is None else f"{name}-{device}"
+    return call("POST", "/Users/AuthenticateByName", {"Username": name, "Pw": password}, who=who)["AccessToken"]
 
 
 def setup():
@@ -64,15 +67,15 @@ def setup():
     print("Set up: accounts 'admin' and 'viewer', libraries Films, Shows, Music and Audiobooks. Scanning now.")
 
 
-def token(name):
+def token(name, device=None):
     accounts = json.loads(STORE.read_text())
-    print(sign_in(name, accounts[name]))
+    print(sign_in(name, accounts[name], device))
 
 
 if __name__ == "__main__":
     if len(sys.argv) >= 2 and sys.argv[1] == "setup":
         setup()
-    elif len(sys.argv) == 3 and sys.argv[1] == "token":
-        token(sys.argv[2])
+    elif len(sys.argv) in (3, 4) and sys.argv[1] == "token":
+        token(sys.argv[2], sys.argv[3] if len(sys.argv) == 4 else None)
     else:
         sys.exit(__doc__)

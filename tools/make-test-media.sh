@@ -24,6 +24,19 @@ audio() { # path seconds title artist album track
 
 video "$OUT/Movies/Test Film (2020)/Test Film (2020).mkv" 300 "Test Film"
 video "$OUT/Movies/Another Film (2021)/Another Film (2021).mkv" 240 "Another Film"
+# Ten minutes: long enough that Jellyfin's ordinary resume rules apply (anything under five is ticked watched at 5%).
+video "$OUT/Movies/Long Film (2019)/Long Film (2019).mkv" 600 "Long Film"
+# Two embedded text subtitle tracks, for the task that prepares subtitles ahead of time.
+subtitled="$OUT/Movies/Subtitled Film (2018)/Subtitled Film (2018).mkv"
+if [[ ! -f "$subtitled" ]]; then
+  mkdir -p "$(dirname "$subtitled")"
+  srt="$(mktemp).srt"
+  printf '1\n00:00:01,000 --> 00:00:04,000\nThe first line.\n\n2\n00:00:05,000 --> 00:00:08,000\nThe second line.\n' > "$srt"
+  "$FFMPEG" -loglevel error -f lavfi -i "testsrc=size=320x180:rate=5:duration=120" -f lavfi -i "sine=frequency=330:duration=120" \
+    -i "$srt" -i "$srt" -map 0:v -map 1:a -map 2:s -map 3:s -c:v libx264 -preset ultrafast -crf 40 -c:a aac -b:a 32k -c:s srt \
+    -metadata:s:s:0 language=eng -metadata:s:s:1 language=fra -shortest "$subtitled"
+  rm -f "$srt"
+fi
 for e in 1 2 3; do
   video "$OUT/Shows/Test Show/Season 01/Test Show S01E0$e.mkv" 180 "Episode $e"
 done

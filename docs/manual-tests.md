@@ -41,3 +41,16 @@ Imports. On the local server, where `jon`'s baseline has already been taken (16 
 | 7 | Read the page's wording throughout the section | Plain, and accurate to what happened |
 
 Playback Reporting has been checked on the Docker 10.10.7 server with a real database. It is not on the local server.
+
+## Phase 3 — 2026-10-30
+
+On the local server unless it says otherwise. Most of Phase 3 is for the app to use; these are what a person can see.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Settings page → *Helping Jellyfin* | Two switches, both off. The first says it is not needed on this server (Jellyfin 12 fixed it) |
+| 2 | Switch on *Prepare subtitles ahead of time*, save; Dashboard → Scheduled Tasks → *JellyMold Companion* → **Prepare subtitles** → run | It finishes; a film with embedded subtitles added in the last week shows its subtitles at once when first chosen |
+| 3 | In the web client, open an episode JellyMold has learned an intro for (once the app posts them) | A **Skip Intro** button in the web client too |
+| 4 | Read the two switches' descriptions | Plain, and accurate about what each changes |
+
+The resume-point fix needs Jellyfin 10.10, so it is checked on JRDisk only with your say-so, or on the Docker server.

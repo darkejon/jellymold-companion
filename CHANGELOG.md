@@ -3,9 +3,29 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
-## 0.2.0 — not yet released (builds 10.0.2.0 and 12.0.2.0)
+## 0.3.0 — not yet released (builds 10.0.3.0 and 12.0.3.0)
 
-Phase 2: importing past history (design §8). Supersedes 0.1.0, which was never published.
+Phase 3: the extra features chosen from design §16. Supersedes 0.2.0, which was never published.
+
+- **A store for each person and one for the household** — documents an app keeps on the server, written only if still
+  the version read, with a change feed. Settings and quiz records sync without iCloud; quiz rounds (`quiz-round:…`)
+  and chapter names (`chapters:…`) are shared by every device in the household.
+- **Quiz results and a household leaderboard**, per programme or overall. Nobody's results are shown to anyone else
+  until they choose to share them.
+- **Learned skip segments published to Jellyfin**, so every app on the server shows Skip for an intro JellyMold found.
+- **Putting the resume point back after an app vanishes mid-play** (Jellyfin 10.10; Jellyfin 12 fixed it itself). Off
+  until switched on: the one feature that writes Jellyfin's own watch data. It applies Jellyfin's own rule to the
+  viewer's real position, so it undoes the guess and nothing else.
+- **Subtitles prepared ahead of time**: a nightly task extracts new items' embedded subtitles through Jellyfin's own
+  extraction. Off until switched on.
+- **The home screen in one request**: Continue Watching, Next Up and the newest in each library, as Jellyfin's own items.
+- Schema 3, by migration: documents, quiz results and sharing, segments.
+- 114 unit tests. Checked live on Jellyfin 12.1 and 10.10.7: the stores and their clashes, the leaderboard's opt-in,
+  a learned intro reaching Jellyfin's segment list, the home screen.
+
+## 0.2.0 — never published (builds 10.0.2.0 and 12.0.2.0)
+
+Phase 2: importing past history (design §8).
 
 - **Each person's baseline from Jellyfin's own watch state**, taken automatically once — shortly after the server
   starts, and for anyone added later. Everything already watched counts, credited its running time; anything under way

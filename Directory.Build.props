@@ -9,11 +9,11 @@
   -->
   <!--
     The release, as people talk about it. Each build's own version puts the Jellyfin major version first —
-    10.0.2.0 for the 10.10 build, 12.0.2.0 for the 12 build — because Jellyfin installs the highest version whose
+    10.0.3.0 for the 10.10 build, 12.0.3.0 for the 12 build — because Jellyfin installs the highest version whose
     targetAbi it meets, with no upper bound: without that, a 12 server would be offered the 10.10 build.
   -->
   <PropertyGroup>
-    <ReleaseVersion>0.2.0</ReleaseVersion>
+    <ReleaseVersion>0.3.0</ReleaseVersion>
   </PropertyGroup>
 
   <PropertyGroup>
