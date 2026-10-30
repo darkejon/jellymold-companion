@@ -1,0 +1,18 @@
+# 1Password references for the local test server — references, not secrets, but they name vault items.
+.env.op
+
+# Build output
+bin/
+obj/
+artifacts/
+*.user
+.vs/
+.idea/
+
+# Test media generated for the local server (tools/make-test-media.sh)
+test-media/
+
+.DS_Store
+
+# Docker test servers (tools/docker-10.10.sh): their config, and generated test accounts
+.docker/
