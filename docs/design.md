@@ -1017,6 +1017,18 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     rule (§5.2). Its full running time is credited only at 90% (§5.3).
 11. **Two builds, Jellyfin 10.10 and 12**, from one codebase (§13a).
 
+### Where the build stands
+
+- **Phase 1** (recording, the API, the database, the settings page) and **Phase 2** (imports) are built, as release
+  0.2.0. Neither is published yet.
+- **Not built from Phase 2:** the recovery of already-deleted items from Jellyfin's own watch data (§8.2). It reads an
+  interface only Jellyfin 10.10 has, it can recover provider ids but never titles, and it needs a test against a real
+  library with deletions in it. Worth doing once on JRDisk's copy of the data, with the maintainer, rather than as a
+  feature. Trakt and Simkl sign-in wait on an email to each about their terms (decision 6).
+- **Found in Phase 2:** Jellyfin keeps a book split into chapter files as one item per file in the book's folder, with
+  no album; the folder is treated as the book. A preview runs the whole import and rolls it back, so its counts are the
+  commit's.
+
 ### Still open
 
 12. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch

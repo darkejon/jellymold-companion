@@ -25,3 +25,19 @@ you are signed in on the same browser; the settings page's figures are the quick
 | 11 | Move a film you have played out of its library folder (to another folder — **not** Jellyfin's Delete, which deletes the file), then scan the library. Move it back afterwards | Its history stays, marked as no longer in the library; after moving it back and scanning, the film carries on from its history |
 
 Report anything that reads wrongly on the settings page as well as anything that counts wrongly.
+
+## Phase 2 — 2026-10-30
+
+Imports. On the local server, where `jon`'s baseline has already been taken (16 watched items).
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Settings page → *Past history* → *Imports so far* | Jellyfin's watch state imported for `claude` and `jon` |
+| 2 | Export your Letterboxd diary (letterboxd.com → Settings → Data → Export), choose it under *Import for: jon*, *From: Letterboxd*, **Show what it would add** | A count of what it would add, what is not in this library, and a sample of rows with what will happen to each. Nothing added yet |
+| 3 | **Import these** | The list shows it imported; the figures at the top of the page go up |
+| 4 | Do step 2 again with the same file | *Already imported* for every row; nothing to add |
+| 5 | **Undo** it in the list | Its entries stop counting; the figures go back |
+| 6 | If you have a Trakt export, the same with *From: Trakt export* | As above; films and episodes matched by their ids |
+| 7 | Read the page's wording throughout the section | Plain, and accurate to what happened |
+
+Playback Reporting has been checked on the Docker 10.10.7 server with a real database. It is not on the local server.

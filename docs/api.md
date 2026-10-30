@@ -40,6 +40,7 @@ across servers.
 | `AlbumId`, `AlbumName`, `Artists`, `AlbumArtists` | Music and audiobooks |
 | `ProviderIds`, `SeriesProviderIds` | As Jellyfin holds them: `{"Tmdb": "603", "Imdb": "tt0133093"}` |
 | `InLibrary`, `RemovedAt` | Whether it is still in the library; when it left |
+| `Origin` | `Library`, or `Import` for media only an import mentioned — perhaps never on this server |
 
 ### `HistoryEntry` — a viewing, or a listen
 
@@ -151,7 +152,8 @@ Everything changed since a token, for keeping a cached copy up to date by deltas
 
 - First call: no `Since` — returns everything, in pages.
 - **`More: true`** — call again straight away with `Next`.
-- **`Removed`** — entries that no longer count (a tick taken back within a day, an import undone). Drop them.
+- **`Removed`** — entries that no longer count (a tick taken back within a day, an import undone, a record superseded
+  by a better source's account of the same viewing). Drop them.
 - **`Resync: true`** — the token was from another database (it was restored from a backup): this answer starts from
   the beginning, and the cached copy should be replaced rather than updated.
 
@@ -185,6 +187,63 @@ Answer: `{ "Results": [{ "ClientSessionId", "Result": "Accepted" | "Duplicate" |
 ### `GET /Export?Format=json|csv`
 
 The signed-in person's whole history, as a file. Admins may pass `UserId`, or `All=true` for everyone.
+
+### Imports — past history (design §8)
+
+Everything watched before the plugin was installed comes from imports. **Jellyfin's own watch state** is imported for
+each person automatically, once, as their baseline. The rest are run by hand:
+
+1. **`POST /Imports/{source}/Preview`** reads the source and answers what importing it would do. Nothing is written.
+2. **`POST /Imports/{importId}/Commit`** applies exactly that.
+3. **`POST /Imports/{importId}/Undo`** takes it back: its entries stop counting (they are kept, as `Undone`), and
+   anything it had replaced counts again. An import undone can be previewed and committed again.
+
+| `source` | Who | Needs a file |
+|---|---|---|
+| `jellyfin` | Anyone, for themselves (it already ran) | no |
+| `playback-reporting` | Admin only — it holds everyone's plays | no |
+| `trakt-export` | Anyone, for themselves | Trakt's history JSON, or its watched-movies / watched-shows JSON |
+| `letterboxd` | Anyone, for themselves | `diary.csv` or `watched.csv` |
+| `csv` | Anyone, for themselves | The CSV below |
+
+Admins may pass `UserId` to import for someone else. **The file is the request body** (`Content-Type: text/csv` or
+`application/json`), or a file in a multipart form; at most 20 MB.
+
+The preview and the commit answer with a report:
+
+```json
+{ "ImportId": "…", "Source": "letterboxd", "UserId": "…", "Rows": 412,
+  "New": 380, "AlreadyImported": 0, "Duplicates": 22, "Replaces": 6, "AfterCutover": 4, "Unmatched": 31,
+  "Sample": [{ "Title": "Paris, Texas (1984)", "When": "2024-03-08T12:00:00Z", "Outcome": "New, not in this library" }],
+  "UnmatchedTitles": ["…"], "Notes": ["Letterboxd gives no provider ids, so films are matched by title and year."] }
+```
+
+- **`AlreadyImported`** — importing twice adds nothing.
+- **`AfterCutover`** — dated after recording began for that person; live recording has it.
+- **`Duplicates`** — the same viewing (within 12 hours; 24 against Jellyfin's estimated dates) is already recorded from
+  a better source, and this one is kept but not counted. **`Replaces`** — this import is the better source. The order
+  is live › offline sessions › Playback Reporting › Trakt › files › Jellyfin's watch state.
+- **`Unmatched`** — not in this library; kept with the title and ids the source gave (`Origin: "Import"`).
+
+Imported entries are `Kind: "Imported"`. Those from sources without durations (Jellyfin's watch state, Trakt, files)
+are `Estimated: true` and credited the running time where it is known. Playback Reporting brings real seconds, and its
+plays become sessions, so they count towards streaks.
+
+`GET /Imports` lists the caller's imports (admins: `All=true` for every one); `GET /Imports/Sources` says which
+sources can be used here and now.
+
+**The CSV:** a header row, then one row per viewing. Columns, any order, case-insensitive:
+
+| Column | |
+|---|---|
+| `date` | Required. `2024-03-08` (read as midday UTC) or a full date and time with offset |
+| `type` | `movie` (the default), `episode`, `audio`, `audiobook` |
+| `title` | The film's title, or the episode's |
+| `year` | For films |
+| `tmdb`, `imdb`, `tvdb` | Provider ids. For an episode, the **series'** ids |
+| `series`, `season`, `episode` | For episodes |
+| `seconds` | Time actually watched, if known |
+| `completed` | `yes` (the default) or `no` |
 
 ### Admin only
 
