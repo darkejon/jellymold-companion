@@ -17,7 +17,15 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<JellyfinHost>();
         serviceCollection.AddSingleton<CompanionService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<CompanionService>());
+        serviceCollection.AddSingleton<IdleGuessCorrector>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<IdleGuessCorrector>());
         serviceCollection.AddHostedService<LibraryListener>();
+        serviceCollection.AddSingleton<Segments.SegmentRefresher>();
+#if JELLYFIN_12
+        serviceCollection.AddSingleton<MediaBrowser.Controller.MediaSegments.IMediaSegmentProvider, Segments.LearnedSegmentProvider>();
+#else
+        serviceCollection.AddSingleton<MediaBrowser.Controller.IMediaSegmentProvider, Segments.LearnedSegmentProvider>();
+#endif
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 

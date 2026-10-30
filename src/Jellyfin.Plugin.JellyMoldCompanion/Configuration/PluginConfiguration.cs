@@ -26,6 +26,21 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public int MinimumAudioBookSeconds { get; set; } = 60;
     public int AbandonAfterDays { get; set; } = 60;
 
+    // — Jellyfin's own data —
+
+    /// <summary>
+    /// After Jellyfin 10.10's idle timer stops a vanished app at an invented position, put the resume point back where the
+    /// viewer was, and take back a watched tick that only the invented position earned (design §16 idea 10). The only
+    /// setting that changes Jellyfin's own watch data, so off until chosen. Jellyfin 12 fixed this itself.
+    /// </summary>
+    public bool FixIdleStopGuess { get; set; }
+
+    /// <summary>Extract new items' embedded subtitles ahead of time, so the first time one is chosen it appears at once (§16 idea 3).</summary>
+    public bool PrepareSubtitles { get; set; }
+
+    /// <summary>When subtitles were last prepared, so each run picks up from there.</summary>
+    public DateTime? SubtitlesPreparedUntil { get; set; }
+
     // — Keeping —
 
     /// <summary>Progress samples are diagnostics; the history is kept regardless. 0 keeps samples for good.</summary>

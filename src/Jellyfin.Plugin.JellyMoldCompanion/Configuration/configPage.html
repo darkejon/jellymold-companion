@@ -56,6 +56,23 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h3 class="sectionTitle">Helping Jellyfin</h3>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="FixIdleStopGuess"><span>Put the resume point back after an app vanishes mid-play</span></label>
+                        <div class="fieldDescription checkboxFieldDescription" id="jmcIdleNote">When an app is closed mid-play, Jellyfin 10.10 stops it some minutes later
+                            at a position it guessed, minutes past where the viewer was, and can tick a nearly finished episode as watched. This puts the
+                            resume point back where they really were, and takes back a watched tick only the guess earned. It changes Jellyfin's own
+                            watch data, so it is off until you choose it.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="PrepareSubtitles"><span>Prepare subtitles ahead of time</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Each night, extracts the embedded subtitles of newly added films and episodes,
+                            so they appear at once the first time they are chosen. Jellyfin keeps what it extracts, picture-based subtitles included,
+                            which can take tens of megabytes a film.</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h3 class="sectionTitle">Keeping</h3>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="SampleRetentionDays" min="0" max="3650" label="Days to keep progress samples (0 keeps them for good)">
@@ -121,7 +138,7 @@
             const page = document.querySelector('#JellyMoldCompanionPage');
             const numbers = ['MinimumVideoSeconds', 'MinimumMusicSeconds', 'MinimumAudioBookSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
-            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks', 'FixIdleStopGuess', 'PrepareSubtitles'];
             let people = [];
 
             function api(path) {
@@ -159,6 +176,10 @@
                 });
 
                 ApiClient.getJSON(api('Info')).then(function (info) {
+                    if (info.Server && info.Server.IdleStopGuessFixedUpstream) {
+                        text(page.querySelector('#jmcIdleNote'), 'Not needed on this server: Jellyfin ' + info.Server.Version
+                            + ' already stops a vanished app at the position it really reached.');
+                    }
                     text(page.querySelector('#jmcCompletion'),
                         'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time, and an audiobook '
                         + 'with under ' + info.Rules.AudioBookCompletionMinutesLeft + ' minutes left. These follow the server\'s own '

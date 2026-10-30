@@ -105,13 +105,16 @@ public sealed class LibraryListener : IHostedService
     private readonly IUserDataManager _userData;
     private readonly ILibraryManager _library;
     private readonly CompanionService _companion;
+    private readonly IdleGuessCorrector _corrector;
     private readonly ILogger<LibraryListener> _logger;
 
-    public LibraryListener(IUserDataManager userData, ILibraryManager library, CompanionService companion, ILogger<LibraryListener> logger)
+    public LibraryListener(IUserDataManager userData, ILibraryManager library, CompanionService companion, IdleGuessCorrector corrector,
+        ILogger<LibraryListener> logger)
     {
         _userData = userData;
         _library = library;
         _companion = companion;
+        _corrector = corrector;
         _logger = logger;
     }
 
@@ -143,7 +146,9 @@ public sealed class LibraryListener : IHostedService
             {
                 User = user,
                 Item = item,
-                Reason = Enum.TryParse<SaveReason>(e.SaveReason.ToString(), out var reason) ? reason : SaveReason.Other,
+                // The plugin's own correction after an idle stop is not somebody unticking the item.
+                Reason = _corrector.IsCorrecting(e.UserId, item.ItemId) ? SaveReason.Other
+                    : Enum.TryParse<SaveReason>(e.SaveReason.ToString(), out var reason) ? reason : SaveReason.Other,
                 Played = e.UserData.Played,
                 PositionTicks = e.UserData.PlaybackPositionTicks,
             });

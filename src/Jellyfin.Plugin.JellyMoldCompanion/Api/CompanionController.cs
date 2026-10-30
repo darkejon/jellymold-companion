@@ -23,7 +23,7 @@ namespace Jellyfin.Plugin.JellyMoldCompanion.Api;
 [Authorize]
 [Route("JellyMold/v1")]
 [Produces(MediaTypeNames.Application.Json)]
-public sealed class CompanionController : ControllerBase
+public sealed class CompanionController : CompanionControllerBase
 {
     public const int ApiVersion = 1;
     private const int MaxPage = 500;
@@ -36,44 +36,6 @@ public sealed class CompanionController : ControllerBase
         _companion = companion;
         _imports = imports;
     }
-
-    // — Who is asking (§9.1) —
-
-    private Guid? CallerId =>
-        Guid.TryParse(User.FindFirst("Jellyfin-UserId")?.Value, out var id) && id != Guid.Empty ? id : null;
-
-    private bool CallerIsAdmin => User.IsInRole("Administrator");
-
-    /// <summary>The person a request is about: the caller, or — for an admin — whoever they name.</summary>
-    private bool TryResolve(Guid? requested, out Guid userId, out ActionResult? refusal)
-    {
-        refusal = null;
-        userId = Guid.Empty;
-        var caller = CallerId;
-        if (requested is { } named && named != Guid.Empty && named != caller)
-        {
-            if (!CallerIsAdmin)
-            {
-                refusal = Problem(StatusCodes.Status403Forbidden, "Only an administrator can read another person's history.");
-                return false;
-            }
-
-            userId = named;
-            return true;
-        }
-
-        if (caller is not { } self)
-        {
-            // An API key signs in as an admin with no user.
-            refusal = Problem(StatusCodes.Status400BadRequest, "An API key must name a UserId.");
-            return false;
-        }
-
-        userId = self;
-        return true;
-    }
-
-    private ObjectResult Problem(int status, string detail) => StatusCode(status, new { Status = status, Detail = detail });
 
     // — Discovery (§9.2) —
 
@@ -92,7 +54,16 @@ public sealed class CompanionController : ControllerBase
             PluginVersion = typeof(CompanionController).Assembly.GetName().Version?.ToString(),
             Release = typeof(CompanionController).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
             ApiVersion,
-            Features = new[] { "history", "summary", "changes", "clientSessions", "export", "sessions", "imports" },
+            Features = new[]
+            {
+                "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
+                "store", "household", "quiz", "segments", "home",
+            },
+            Server = new
+            {
+                Version = typeof(MediaBrowser.Controller.IServerApplicationHost).Assembly.GetName().Version?.ToString(3),
+                IdleStopGuessFixedUpstream = global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.IdleGuessCorrector.FixedUpstream,
+            },
             Recording = _companion.Recording.IsRecording,
             Rules = new
             {
