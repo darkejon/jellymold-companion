@@ -258,6 +258,110 @@ public class ImporterTests
         Assert.Equal(viewing.Id, Assert.Single(h.Sessions()).ViewingId);
     }
 
+    // — Undoing an import that live play has since carried on —
+
+    private static int Undo(Harness h, Guid importId, DateTimeOffset at)
+    {
+        var undo = new ImportUndoRequest(at, importId);
+        h.Recorder.Apply(undo);
+        return Harness.Answer(undo.Done.Task);
+    }
+
+    private static Guid HalfWatchedThenResumed(Harness h, MediaSnapshot episode, double to, out DateTimeOffset at)
+    {
+        var baseline = Import(h, ImportSources.Jellyfin, InProgress(episode, Install.AddMinutes(-5), 365, "jf"));
+        var t = Install.AddMinutes(1);
+        h.Start(episode, t, 365);
+        at = h.Play(episode, t, 365, to);
+        return baseline.ImportId;
+    }
+
+    [Fact]
+    public void UndoingAnImportKeepsWhatWasPlayedSince()
+    {
+        using var h = Started();
+        var episode = Harness.Episode(minutes: 25);
+        var import = HalfWatchedThenResumed(h, episode, 1500, out var at);
+        h.Stop(episode, at, 1500);
+
+        Assert.Equal(1, Undo(h, import, at.AddHours(1)));
+
+        var rows = h.Viewings();
+        Assert.Equal(["undone", "completed"], rows.Select(v => v.Status));
+        var kept = rows[1];
+        Assert.Equal("played", kept.Kind);
+        Assert.Equal(1135, kept.Actual, 1);
+        Assert.Equal(1500, kept.Credited, 1); // finished here, so its running time, as any finished viewing
+        var session = Assert.Single(h.Sessions());
+        Assert.Equal(kept.Id, session.ViewingId);
+        Assert.True(session.Counted);
+    }
+
+    [Fact]
+    public void AnUnfinishedPlayKeptByAnUndoIsCreditedWhatWasPlayed()
+    {
+        using var h = Started();
+        var episode = Harness.Episode(minutes: 25);
+        var import = HalfWatchedThenResumed(h, episode, 900, out var at);
+        h.Stop(episode, at, 900);
+
+        Undo(h, import, at.AddHours(1));
+
+        var kept = h.Viewings()[1];
+        Assert.Equal("in-progress", kept.Status);
+        Assert.Equal(535, kept.Credited, 1); // not the 365 seconds the import said came before
+    }
+
+    [Fact]
+    public void APlayStillGoingDuringAnUndoCarriesOnInTheViewingKept()
+    {
+        using var h = Started();
+        var episode = Harness.Episode(minutes: 25);
+        var import = HalfWatchedThenResumed(h, episode, 900, out var at);
+
+        Undo(h, import, at);
+        h.Stop(episode, h.Play(episode, at, 900, 1500), 1500);
+
+        var rows = h.Viewings();
+        Assert.Equal(["undone", "completed"], rows.Select(v => v.Status)); // the undone one is not written back
+        Assert.Equal(1135, rows[1].Actual, 1);
+        Assert.Equal(1500, rows[1].Credited, 1);
+        Assert.Equal(rows[1].Id, Assert.Single(h.Sessions()).ViewingId);
+    }
+
+    [Fact]
+    public void ImportingAgainAfterAnUndoLeavesWhatWasPlayedToLiveRecording()
+    {
+        using var h = Started();
+        var episode = Harness.Episode(minutes: 25);
+        var import = HalfWatchedThenResumed(h, episode, 1500, out var at);
+        h.Stop(episode, at, 1500);
+        Undo(h, import, at.AddHours(1));
+
+        var again = Import(h, ImportSources.Jellyfin, InProgress(episode, Install.AddMinutes(-5), 365, "jf"));
+
+        Assert.Equal(1, again.Duplicates);
+        Assert.Equal(1500, h.Scalar(
+            "SELECT SUM(credited_seconds) FROM viewings WHERE status IN ('in-progress', 'completed', 'abandoned') AND superseded_by IS NULL"));
+    }
+
+    [Fact]
+    public void CreditsWatchedAfterAnImportedFilmAreNotAWholeFilmOnceItIsUndone()
+    {
+        using var h = Started();
+        var film = Harness.Film(minutes: 100);
+        var baseline = Import(h, ImportSources.Jellyfin, Watched(film, Install.AddHours(-1), "jf"));
+        var t = Install.AddMinutes(10);
+        h.Start(film, t, 5700); // the credits, which join the finished viewing (§5.4)
+        h.Stop(film, h.Play(film, t, 5700, 6000), 6000);
+
+        Undo(h, baseline.ImportId, t.AddHours(1));
+
+        var kept = h.Viewings()[1];
+        Assert.Equal("in-progress", kept.Status);
+        Assert.Equal(300, kept.Credited, 1);
+    }
+
     private sealed class NoLibrary : ILibraryFacts
     {
         public int? EpisodesInSeries(Guid seriesId) => null;

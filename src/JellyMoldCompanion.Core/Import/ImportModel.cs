@@ -74,6 +74,12 @@ public sealed record ImportCandidate
     public DateTimeOffset When => CompletedAt ?? LastActivityAt;
 }
 
+/// <summary>
+/// What an undo did: how many viewings it took back, and — by the viewing taken back — each viewing it made of what
+/// was played here since, so a play still going can carry on in it.
+/// </summary>
+public sealed record UndoResult(int Undone, IReadOnlyDictionary<Guid, Storage.ViewingRecord> PlayedKept);
+
 public sealed record ImportedPlay(DateTimeOffset StartedAt, double Seconds, string? Client, string? DeviceName, string? PlayMethod);
 
 /// <summary>What an import did, or would do. Kept with the import.</summary>

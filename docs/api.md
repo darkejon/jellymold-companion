@@ -196,7 +196,9 @@ each person automatically, once, as their baseline. The rest are run by hand:
 1. **`POST /Imports/{source}/Preview`** reads the source and answers what importing it would do. Nothing is written.
 2. **`POST /Imports/{importId}/Commit`** applies exactly that.
 3. **`POST /Imports/{importId}/Undo`** takes it back: its entries stop counting (they are kept, as `Undone`), and
-   anything it had replaced counts again. An import undone can be previewed and committed again.
+   anything it had replaced counts again. Anything played since that carried one of its entries on is kept as an
+   entry of its own (`Source: live`), with only the time played: in the change feed, one entry removed and one new.
+   An import undone can be previewed and committed again.
 
 | `source` | Who | Needs a file |
 |---|---|---|

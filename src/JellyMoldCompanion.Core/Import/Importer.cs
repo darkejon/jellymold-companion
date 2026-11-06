@@ -73,7 +73,7 @@ public sealed class Importer
         return report;
     }
 
-    public int Undo(Guid importId, DateTimeOffset now)
+    public UndoResult Undo(Guid importId, DateTimeOffset now, CountingRules rules)
     {
         var import = _store.GetImport(importId) ?? throw new ImportException("There is no such import.");
         if (import.CommittedAt is null)
@@ -87,19 +87,44 @@ public sealed class Importer
         }
 
         var undone = 0;
+        var kept = new Dictionary<Guid, ViewingRecord>();
         _store.InTransaction(() =>
         {
             var viewings = _store.ViewingsOfImport(importId);
             foreach (var viewing in viewings.Where(v => v.Status != ViewingStatus.Undone))
             {
+                // Anything played here since, carrying the imported viewing on, stays: the undo takes back what the
+                // import said, never what was watched.
+                var played = _store.SessionsOfViewing(viewing.ViewingId)
+                    .Where(s => s.Source is Sources.Live or Sources.Client).ToList();
+                var playedSince = played.Count > 0 ? PlayedSince(viewing, played, rules) : null;
+
                 viewing.Status = ViewingStatus.Undone;
+                // Points at the viewing kept for what was played, so importing this again leaves it to that (see Add).
+                viewing.SupersededBy = playedSince?.ViewingId ?? viewing.SupersededBy;
                 _store.SaveViewing(viewing);
                 _store.SetSessionsCounted(viewing.ViewingId, false);
                 undone++;
+
+                if (playedSince is not null)
+                {
+                    _store.SaveViewing(playedSince);
+                    foreach (var session in played)
+                    {
+                        session.ViewingId = playedSince.ViewingId;
+                        session.Counted = true;
+                        _store.SaveSession(session);
+                    }
+
+                    _store.InsertEvent(now, "played-kept", viewing.UserId, viewing.ItemId,
+                        detail: new { undone = viewing.ViewingId, kept = playedSince.ViewingId });
+                    kept[viewing.ViewingId] = playedSince;
+                }
             }
 
-            // Whatever this import had replaced counts again.
-            foreach (var replaced in _store.ViewingsSupersededBy(viewings.Select(v => v.ViewingId).ToList()))
+            // Whatever this import had replaced counts again — but not its own rows, undone just now with the rest.
+            var replacedBy = viewings.Select(v => v.ViewingId).ToList();
+            foreach (var replaced in _store.ViewingsSupersededBy(replacedBy).Where(r => r.Status != ViewingStatus.Undone))
             {
                 replaced.SupersededBy = null;
                 _store.SaveViewing(replaced);
@@ -107,9 +132,47 @@ public sealed class Importer
             }
 
             _store.SetImportUndone(importId, now);
-            _store.InsertEvent(now, "import-undone", import.UserId, detail: new { import = importId, import.Source, undone });
+            _store.InsertEvent(now, "import-undone", import.UserId,
+                detail: new { import = importId, import.Source, undone, playedKept = kept.Count });
         });
-        return undone;
+        return new UndoResult(undone, kept);
+    }
+
+    /// <summary>
+    /// What was played here of a viewing whose import is being undone, as a viewing of its own. It counts as finished
+    /// only if it finished while being played here: credits watched after a film the import said was watched are the
+    /// credits, not a second film.
+    /// </summary>
+    private static ViewingRecord PlayedSince(ViewingRecord viewing, IReadOnlyList<SessionRecord> played, CountingRules rules)
+    {
+        var first = played.Min(s => s.StartedAt);
+        var actual = played.Sum(s => s.ActualSeconds);
+        var furthest = played.Max(s => s.FurthestTicks);
+        var finishedHere = viewing.IsCompleted && viewing.CompletedAt >= first &&
+                           (viewing.CompletedBy == CompletedBy.Mark ||
+                            Completion.IsComplete(viewing.MediaKind, viewing.RuntimeTicks, furthest, actual, rules));
+        var completedBy = finishedHere ? viewing.CompletedBy : null;
+        return new ViewingRecord
+        {
+            UserId = viewing.UserId,
+            ItemId = viewing.ItemId,
+            MediaKind = viewing.MediaKind,
+            Kind = ViewingKind.Played,
+            Source = played.Any(s => s.Source == Sources.Live) ? Sources.Live : Sources.Client,
+            Status = finishedHere ? ViewingStatus.Completed
+                : viewing.Status == ViewingStatus.Abandoned ? ViewingStatus.Abandoned
+                : ViewingStatus.InProgress,
+            StartedAt = first,
+            LastActivityAt = played.Max(s => s.EndedAt ?? s.LastSeenAt),
+            CompletedAt = finishedHere ? viewing.CompletedAt : null,
+            CompletedBy = completedBy,
+            FurthestTicks = furthest,
+            RuntimeTicks = viewing.RuntimeTicks,
+            ActualSeconds = actual,
+            WallSeconds = played.Sum(s => s.WallSeconds),
+            CreditedSeconds = Completion.Credited(viewing.MediaKind, viewing.RuntimeTicks, actual, completedBy, rules),
+            Rule = Completion.RuleLabel(viewing.MediaKind, rules),
+        };
     }
 
     private ImportReport Apply(Guid importId, string source, Guid? userId, IReadOnlyList<ImportCandidate> candidates, DateTimeOffset now)
@@ -201,8 +264,14 @@ public sealed class Importer
         };
 
         // The same viewing recorded already? Searched over the widest window, then held to the one for this pair of sources.
-        var near = _store.NearbyViewing(c.UserId, c.Item.ItemId, keys, c.When, TimeSpan.FromHours(24), excluding: viewing.ViewingId);
-        if (near is not null && ((near.CompletedAt ?? near.LastActivityAt) - c.When).Duration() > ImportSources.DuplicateWindow(source, near.Source))
+        // A record undone after it was played on is matched to the viewing kept for that play, however long after it
+        // came: live recording wins.
+        var near = undone?.SupersededBy is { } keptId && _store.GetViewing(keptId) is { SupersededBy: null } kept &&
+                   kept.Status is ViewingStatus.InProgress or ViewingStatus.Completed or ViewingStatus.Abandoned
+            ? kept
+            : _store.NearbyViewing(c.UserId, c.Item.ItemId, keys, c.When, TimeSpan.FromHours(24), excluding: viewing.ViewingId);
+        if (near is not null && near.ViewingId != undone?.SupersededBy &&
+            ((near.CompletedAt ?? near.LastActivityAt) - c.When).Duration() > ImportSources.DuplicateWindow(source, near.Source))
         {
             near = null;
         }

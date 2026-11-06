@@ -9,7 +9,13 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
   second before the baseline was taken. The play became a second viewing beside the baseline's half-watched one, and
   finishing it would have credited the first six minutes twice. A play now looks again for a viewing to join when it
   first counts, not only when it starts.
-- 116 unit tests.
+- **Undoing an import keeps what was played since.** If live play had carried on one of its entries (an episode
+  half-watched at install and finished later), undoing the import used to stop that play counting too, and importing
+  again did not bring it back. Now the played part is kept as an entry of its own, credited the time played (or the
+  running time, if it was finished while being played); only what the import said stops counting. A play still going
+  during the undo carries on in that entry. Importing the same records again leaves it to live recording.
+- An undone import's own entries, where one had replaced another, no longer have their sessions counted again.
+- 121 unit tests.
 
 ## 0.3.0 — 2026-10-30 (builds 10.0.3.0 and 12.0.3.0)
 

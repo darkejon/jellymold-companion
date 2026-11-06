@@ -140,7 +140,9 @@ public sealed class Recorder
                 return;
 
             case ImportUndoRequest undo:
-                undo.Done.TrySetResult(_importer.Undo(undo.ImportId, undo.At));
+                var undid = _importer.Undo(undo.ImportId, undo.At, Rules);
+                FollowUndo(undid.PlayedKept);
+                undo.Done.TrySetResult(undid.Undone);
                 return;
 
             case WriteRequest write:
@@ -605,6 +607,24 @@ public sealed class Recorder
         }
 
         return new(latest, null);
+    }
+
+    /// <summary>
+    /// A play still going on a viewing an undo has just taken back carries on in the viewing kept for what was played
+    /// (§8.1). Otherwise its next report would write the old viewing back, counting again.
+    /// </summary>
+    private void FollowUndo(IReadOnlyDictionary<Guid, ViewingRecord> playedKept)
+    {
+        foreach (var session in _open.Values.Distinct())
+        {
+            if (session.Viewing is { } old && playedKept.TryGetValue(old.ViewingId, out var kept))
+            {
+                // The kept viewing already holds this play's seconds so far; the base is everything else in it.
+                Attach(session, kept);
+                session.ViewingBaseActual = kept.ActualSeconds - session.Record.ActualSeconds;
+                session.ViewingBaseWall = kept.WallSeconds - session.Record.WallSeconds;
+            }
+        }
     }
 
     private static void Attach(OpenSession session, ViewingRecord viewing)

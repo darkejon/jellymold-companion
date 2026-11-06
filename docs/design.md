@@ -530,6 +530,11 @@ undone on its own (§8.1).
   something already there, items it could not match — and writes nothing until committed.
 - **Undo.** Undoing an import marks its viewings `undone`; any viewings it had superseded count again.
   Undoing an *import* is not deleting *history*: the rows stay, with the reason.
+- **What was played since stays.** Where live play carried an imported viewing on (episode 3 half-watched at
+  install, finished the next evening), undo keeps the played part as a viewing of its own and moves its sessions
+  there; only what the import said stops counting. It counts as finished only if it finished while being played,
+  so credits watched after a film the import said was watched stay the credits. Importing the same records again
+  leaves that viewing to live recording rather than counting the import's part a second time (decided 2026-11-06).
 - **Idempotent.** Every imported record carries its source's own key (a Playback Reporting row id, a Trakt
   history id, a user and item and date for Jellyfin's watch state). Importing twice adds nothing.
 - **Matching** by provider ids to the library. **Unmatched items are kept** with whatever the source knew

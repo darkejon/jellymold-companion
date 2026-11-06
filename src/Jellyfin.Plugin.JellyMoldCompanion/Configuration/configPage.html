@@ -289,7 +289,7 @@
                             undo.style.marginLeft = '1em';
                             undo.appendChild(element('span', 'Undo'));
                             undo.addEventListener('click', function () {
-                                Dashboard.confirm('Its entries stop counting. They are kept, marked as undone, and anything it replaced counts again.',
+                                Dashboard.confirm('Its entries stop counting. They are kept, marked as undone, and anything it replaced counts again. Anything played since still counts.',
                                     'Undo this import?').then(function () {
                                     ApiClient.ajax({ type: 'POST', url: api('Imports/' + i.Id + '/Undo') }).then(function () {
                                         showImports();
