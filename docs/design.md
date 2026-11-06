@@ -340,7 +340,9 @@ in the app is credited time (decided 2026-10-30), with actual time beside it.
 ### 5.4 Viewings and rewatches
 
 When a session ends it joins a viewing. Find this person's **latest viewing of the same media** (same
-item, or a shared media key):
+item, or a shared media key). The recorder decides when the session starts, and decides again when the session first
+counts (§5.5), so a viewing that appeared in between is joined rather than doubled: above all the baseline, taken
+half a minute after the server starts, by when an app may already have resumed (JRDisk, 2026-11-06).
 
 | The latest viewing is… | This session… | Result |
 |---|---|---|

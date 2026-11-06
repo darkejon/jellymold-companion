@@ -3,6 +3,14 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased
+
+- **A play resumed as the plugin first starts carries on its viewing.** On JRDisk an app resumed an episode half a
+  second before the baseline was taken. The play became a second viewing beside the baseline's half-watched one, and
+  finishing it would have credited the first six minutes twice. A play now looks again for a viewing to join when it
+  first counts, not only when it starts.
+- 116 unit tests.
+
 ## 0.3.0 — 2026-10-30 (builds 10.0.3.0 and 12.0.3.0)
 
 The first published release: https://github.com/darkejon/jellymold-companion/releases/tag/v0.3.0

@@ -633,7 +633,21 @@ public sealed class Recorder
                 return;
             }
 
-            CreateViewingFor(session);
+            // Decided again now it has earned one: something to join may have arrived since it started. Above all the
+            // baseline, taken half a minute after the server starts, by when an app may already have resumed what it
+            // was playing before the restart.
+            var decision = DecideViewing(s.UserId, s.ItemId, session.Keys, s.RuntimeTicks, s.StartTicks, s.StartedAt);
+            if (decision.Join is { } join)
+            {
+                session.PendingAbandon = null;
+                Attach(session, join);
+            }
+            else
+            {
+                // Read fresh, so it is never a copy an undo has since taken back.
+                session.PendingAbandon = decision.Abandon;
+                CreateViewingFor(session);
+            }
         }
 
         var v = session.Viewing!;

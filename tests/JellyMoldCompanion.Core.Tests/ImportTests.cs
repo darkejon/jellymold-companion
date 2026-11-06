@@ -203,6 +203,61 @@ public class ImporterTests
         Assert.Equal(2, new HistoryQueries(h.Database).Summary(Harness.Jon.Id, TimeZoneInfo.Utc, 5, new NoLibrary(), t.AddHours(3)).Films.Viewings);
     }
 
+    private static ImportCandidate InProgress(MediaSnapshot item, DateTimeOffset when, double seconds, string key) =>
+        new()
+        {
+            UserId = Harness.Jon.Id,
+            UserName = Harness.Jon.Name,
+            Item = item,
+            Matched = true,
+            SourceKey = key,
+            StartedAt = when,
+            LastActivityAt = when,
+            FurthestTicks = Harness.Ticks(seconds),
+            ActualSeconds = seconds,
+            WallSeconds = seconds,
+            CreditedSeconds = seconds,
+            Estimated = true,
+        };
+
+    [Fact]
+    public void AResumeAfterTheBaselineCarriesItsViewingOn()
+    {
+        using var h = Started();
+        var episode = Harness.Episode(minutes: 25);
+        Import(h, ImportSources.Jellyfin, InProgress(episode, Install.AddMinutes(-5), 365, "jf"));
+
+        h.Start(episode, Install.AddMinutes(1), 365);
+        h.Stop(episode, h.Play(episode, Install.AddMinutes(1), 365, 1500), 1500);
+
+        var viewing = Assert.Single(h.Viewings());
+        Assert.Equal("completed", viewing.Status);
+        Assert.Equal(1500, viewing.Credited, 1);
+    }
+
+    [Fact]
+    public void APlayResumedJustBeforeTheBaselineCarriesItsViewingOn()
+    {
+        // JRDisk, 2026-11-06: the app resumed an episode as the server came back up, half a second before the
+        // baseline. The play was too short to be a viewing yet, so it had nothing to join and nothing to be matched.
+        using var h = new Harness();
+        var episode = Harness.Episode(minutes: 25);
+        h.Start(episode, Install, 365); // recording begins: the cutover
+        h.Progress(episode, Install.Seconds(2), 367);
+        Import(h, ImportSources.Jellyfin, InProgress(episode, Install.AddMinutes(-5), 365, "jf"));
+
+        var paused = h.Play(episode, Install.Seconds(2), 367, 900);
+        var underWay = Assert.Single(h.Viewings());
+        Assert.Equal("in-progress", underWay.Status);
+        Assert.Equal(900, underWay.Credited, 1); // 365 before the restart, 535 since
+
+        h.Stop(episode, h.Play(episode, paused, 900, 1500), 1500);
+        var viewing = Assert.Single(h.Viewings());
+        Assert.Equal("completed", viewing.Status);
+        Assert.Equal(1500, viewing.Credited, 1); // its running time, once
+        Assert.Equal(viewing.Id, Assert.Single(h.Sessions()).ViewingId);
+    }
+
     private sealed class NoLibrary : ILibraryFacts
     {
         public int? EpisodesInSeries(Guid seriesId) => null;
