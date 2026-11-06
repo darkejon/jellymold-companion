@@ -15,6 +15,7 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
   running time, if it was finished while being played); only what the import said stops counting. A play still going
   during the undo carries on in that entry. Importing the same records again leaves it to live recording.
 - An undone import's own entries, where one had replaced another, no longer have their sessions counted again.
+- The settings page says "1 session, 1 person", not "1 sessions, 1 people".
 - `tools/package.sh` refuses to build code that is not committed, so each build's stamp names the commit it came from.
   The 0.3.0 zips are stamped `f2a785a`, the 0.2.0 commit: they were built before the 0.3.0 code was committed. What
   is in them is 0.3.0.

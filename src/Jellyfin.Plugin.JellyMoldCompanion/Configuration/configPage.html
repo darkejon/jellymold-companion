@@ -149,6 +149,10 @@
                 return (bytes / 1048576).toFixed(1) + ' MB';
             }
 
+            function counted(n, one, many) {
+                return n + ' ' + (n === 1 ? one : many);
+            }
+
             function text(element, value) {
                 element.textContent = value;
             }
@@ -163,8 +167,9 @@
                         lines.push(s.Problem);
                     }
                     if (s.Counts && s.Counts.Viewings !== undefined) {
-                        lines.push(s.Counts.Viewings + ' viewings and listens, ' + s.Counts.Sessions + ' sessions, '
-                            + s.Counts.People + ' people. Database ' + megabytes(s.Counts.Bytes) + '.');
+                        lines.push(counted(s.Counts.Viewings, 'viewing or listen', 'viewings and listens') + ', '
+                            + counted(s.Counts.Sessions, 'session', 'sessions') + ', '
+                            + counted(s.Counts.People, 'person', 'people') + '. Database ' + megabytes(s.Counts.Bytes) + '.');
                     }
                     lines.push(s.OpenSessions + ' playing now.');
                     text(status, lines.join(' '));
