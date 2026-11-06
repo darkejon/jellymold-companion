@@ -14,6 +14,15 @@ export PATH="$HOME/.dotnet:$PATH" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 CHANGELOG="${1:?Say what changed: tools/package.sh \"…\"}"
 RELEASE="$(sed -n 's:.*<ReleaseVersion>\(.*\)</ReleaseVersion>.*:\1:p' Directory.Build.props)"
 REPO="darkejon/jellymold-companion"
+
+# Each build is stamped with the commit it came from (Info's Release, 10.0.3.0+<commit>), so build only committed code:
+# otherwise the stamp names a commit that does not hold what is in the zip.
+if [ -n "$(git status --porcelain -- src Directory.Build.props)" ]; then
+  echo "Commit the code first. The build is stamped with the commit it came from, and these have changed since:" >&2
+  git status --short -- src Directory.Build.props >&2
+  exit 1
+fi
+
 mkdir -p artifacts
 
 dotnet test tests/JellyMoldCompanion.Core.Tests -c Release --nologo -v quiet
