@@ -66,7 +66,11 @@ tools/load-local.sh                                    # install the 12 build in
 tools/docker-10.10.sh load                             # install the 10.10 build into the Docker server
 JELLYFIN_TOKEN=… tools/live-check.py                   # play a film and an episode, check what was recorded (~2 min)
 tools/package.sh "What changed"                        # both zips + manifest.json
+JELLYFIN_TOKEN=… tools/catalog-install.py --server …   # install from the published repository, as an admin would
 ```
+
+**Releasing:** `package.sh`, commit the manifest, then `gh release create v<release>` with both zips — the manifest
+already points at that tag. Check each zip downloads through the manifest with a matching MD5 before telling anyone.
 
 **Jellyfin restarts in-process and does not reload a plugin's code.** A new build needs the server process
 restarted: `load-local.sh` quits and reopens Jellyfin.app, and `docker-10.10.sh load` restarts the container.
