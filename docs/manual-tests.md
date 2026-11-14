@@ -54,3 +54,18 @@ On the local server unless it says otherwise. Most of Phase 3 is for the app to 
 | 4 | Read the two switches' descriptions | Plain, and accurate about what each changes |
 
 The resume-point fix needs Jellyfin 10.10, so it is checked on JRDisk only with your say-so, or on the Docker server.
+
+## Black bars — 2026-11-07
+
+On the local server. The plugin measures; the app reads what it measured once its own session has built that.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Settings page → *Helping Jellyfin* | A third switch, *Measure black bars*, on, with how many files have been measured and how many have bars |
+| 2 | Dashboard → Scheduled Tasks → *JellyMold Companion* → **Measure black bars** → run | It finishes; the count on the settings page goes up |
+| 3 | Once the app reads it: play a widescreen Blu-ray remux for the first time on a device (*Companion (2025)* on JRDisk) | It opens with no black bars and no resize |
+| 4 | The same with a film that opens out for IMAX scenes, if you have one | The IMAX scenes fill the screen; nothing is cut off |
+| 5 | A 4K HDR film, and one in Dolby Vision if you have one | Cropped like the others. If not, the log line *measured …* says what was found |
+| 6 | Read the switch's description | Plain, and accurate about what it does and costs |
+
+Rows 3 to 5 need JRDisk's films, so they wait for your say-so.

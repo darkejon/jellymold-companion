@@ -295,6 +295,36 @@ Saved segments are published to Jellyfin through the plugin's segment provider, 
 the Skip button (Jellyfin's own `GET /MediaSegments/{itemId}`). Jellyfin adds a provider's segments only to an item
 that has none from another provider yet — learned intros fill gaps, they do not override a chapter-name provider.
 
+### Black bars (design §16 idea 11)
+
+The black bars built into a file's picture — a widescreen film stored in a 16:9 frame, as on Blu-ray — so an app opens
+it already cropped. Listed in `/Info`'s `Features` as `pictureCrop`.
+
+| | |
+|---|---|
+| `GET /Items/{itemId}/PictureCrop?MediaSourceId=…` | The bars of one of the item's files: the version named, or its first. **404** until it has been measured; the item is then measured ahead of everything else, so it is usually ready by the next play |
+| `POST /Items/{itemId}/PictureCrop` | An app's own finding, for a file not measured yet: `{ "MediaSourceId", "Width", "Height", "Top", "Bottom", "Left", "Right" }` (`MediaSourceId` optional), in whatever frame the app measured in — the picture it decoded, or shares of 10000. Kept in the file's own frame. Answers what is now given for the file. **400** for bars that leave under half the frame |
+| `DELETE /Items/{itemId}/PictureCrop` | Admin only. Forgets what was measured and reported for the item, and measures it again |
+
+```json
+{ "ItemId": "…", "MediaSourceId": "…", "Width": 1920, "Height": 1080,
+  "Top": 138, "Bottom": 138, "Left": 0, "Right": 0, "MeasuredAt": "2026-11-07T23:26:33Z", "Source": "server" }
+```
+
+- **The bars are raw**, in pixels of the frame `Width` × `Height` as it is decoded (1920 × 1080, never the 1088 some
+  files are coded at). They are not a crop rectangle and have no safety margin: crop symmetrically and add your own.
+  For a file with non-square pixels (a DVD's 720 × 576), they are stored pixels: use them as shares of `Width` and
+  `Height`.
+- **All zeros** means measured, with no bars. Bars under 2% of the frame are given as 0.
+- **`Source`** is `server` when the plugin measured it, or `app` when it is an app's report the plugin has not yet
+  replaced. The plugin's measurement always wins; two reports of a file keep the smaller bar on each side, so a second
+  opinion only ever crops less.
+- **How it is measured:** one keyframe at each of 12 points from 5% to 90% of the running time; a black frame is left
+  out, and the smallest bars seen win, so a film that opens out for its IMAX scenes keeps the taller picture. Each file
+  is measured once, and again if it is replaced.
+- **When:** a few minutes after a file is added, at once when an app asks for one not measured yet, and the rest of the
+  library for up to two hours a night. Admins can switch it off on the settings page; reports are still kept and given.
+
 ### `GET /Home?Limit=16`
 
 The home screen in one request: `{ "ContinueWatching": [BaseItemDto], "NextUp": [BaseItemDto], "Latest": [{ "Library":
@@ -303,5 +333,6 @@ them, with `ProviderIds`, `UserData` and images — read them with the code that
 
 ### Admin only
 
-- `GET /Admin/Status` — recording or not, any problem in plain words, database size and counts, backups, people.
+- `GET /Admin/Status` — recording or not, any problem in plain words, database size and counts, backups, people, and
+  black bars (`PictureCrop`: switched on or not, any problem, how many are waiting, and how many files are measured).
 - `POST /Admin/Backups` — back up now.

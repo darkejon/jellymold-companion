@@ -26,6 +26,8 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
 #else
         serviceCollection.AddSingleton<MediaBrowser.Controller.IMediaSegmentProvider, Segments.LearnedSegmentProvider>();
 #endif
+        serviceCollection.AddSingleton<PictureCropMeasurer>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<PictureCropMeasurer>());
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 

@@ -19,7 +19,15 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
 - `tools/package.sh` refuses to build code that is not committed, so each build's stamp names the commit it came from.
   The 0.3.0 zips are stamped `f2a785a`, the 0.2.0 commit: they were built before the 0.3.0 code was committed. What
   is in them is 0.3.0.
-- 121 unit tests.
+- **Black bars measured once per file**, so JellyMold opens a widescreen film already cropped, the first time too
+  (design §16 idea 11). Jellyfin's own ffmpeg looks at one keyframe at each of 12 points across the running time and
+  keeps the smallest bars seen. New files are measured a few minutes after they arrive, anything an app asks for at
+  once, and the rest of the library for up to two hours a night. Apps can report what they found for a file not
+  measured yet; the plugin's measurement always wins. On until switched off, under *Helping Jellyfin*.
+  `GET`/`POST /Items/{itemId}/PictureCrop`.
+- Schema 4, by migration: black bars.
+- 146 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
+  as having no bars, an app's report given until the plugin measured, and the nightly task.
 
 ## 0.3.0 — 2026-10-30 (builds 10.0.3.0 and 12.0.3.0)
 

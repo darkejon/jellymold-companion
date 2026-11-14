@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# A small library for the test servers, generated rather than copied: two films, a series of three episodes, an
-# album of three songs and two audiobooks (one file, and one split into chapter files). Test patterns and tones,
-# a few megabytes in all. Written to test-media/ (gitignored).
+# A small library for the test servers, generated rather than copied: five films (one letterboxed, one with
+# subtitles), a series of three episodes, an album of three songs and two audiobooks (one file, and one split into
+# chapter files). Test patterns and tones, a few tens of megabytes in all. Written to test-media/ (gitignored).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,6 +36,14 @@ if [[ ! -f "$subtitled" ]]; then
     -i "$srt" -i "$srt" -map 0:v -map 1:a -map 2:s -map 3:s -c:v libx264 -preset ultrafast -crf 40 -c:a aac -b:a 32k -c:s srt \
     -metadata:s:s:0 language=eng -metadata:s:s:1 language=fra -shortest "$subtitled"
   rm -f "$srt"
+fi
+# Letterboxed: a 2.39:1 picture stored in a 16:9 frame with the bars as black pixels, as a widescreen film is on Blu-ray,
+# for measuring black bars. 46 rows of black at the top and the bottom of 640 x 360.
+scope="$OUT/Movies/Scope Film (2022)/Scope Film (2022).mkv"
+if [[ ! -f "$scope" ]]; then
+  mkdir -p "$(dirname "$scope")"
+  "$FFMPEG" -loglevel error -f lavfi -i "testsrc2=size=640x268:rate=5:duration=600" -f lavfi -i "sine=frequency=330:duration=600" \
+    -vf "pad=640:360:0:46:black" -c:v libx264 -preset ultrafast -crf 40 -g 25 -c:a aac -b:a 32k -metadata title="Scope Film" -shortest "$scope"
 fi
 for e in 1 2 3; do
   video "$OUT/Shows/Test Show/Season 01/Test Show S01E0$e.mkv" 180 "Episode $e"

@@ -70,6 +70,13 @@
                             so they appear at once the first time they are chosen. Jellyfin keeps what it extracts, picture-based subtitles included,
                             which can take tens of megabytes a film.</div>
                     </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="MeasurePictureCrop"><span>Measure black bars</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Measures the black bars built into the picture of widescreen films
+                            and episodes, so JellyMold opens them already cropped, the first time too. It looks at one frame at a time, at low
+                            priority: new files a few minutes after they arrive, and the rest of the library for up to two hours a night from 01:00.
+                            <span id="jmcCropNote"></span></div>
+                    </div>
                 </div>
 
                 <div class="verticalSection">
@@ -138,7 +145,7 @@
             const page = document.querySelector('#JellyMoldCompanionPage');
             const numbers = ['MinimumVideoSeconds', 'MinimumMusicSeconds', 'MinimumAudioBookSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
-            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks', 'FixIdleStopGuess', 'PrepareSubtitles'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop'];
             let people = [];
 
             function api(path) {
@@ -173,6 +180,17 @@
                     }
                     lines.push(s.OpenSessions + ' playing now.');
                     text(status, lines.join(' '));
+                    const crop = s.PictureCrop;
+                    if (crop && crop.Counts) {
+                        const said = [counted(crop.Counts.Measured, 'file', 'files') + ' measured, ' + crop.Counts.WithBars + ' with bars.'];
+                        if (crop.Waiting) {
+                            said.push(crop.Waiting + ' waiting.');
+                        }
+                        if (crop.Problem) {
+                            said.push(crop.Problem);
+                        }
+                        text(page.querySelector('#jmcCropNote'), said.join(' '));
+                    }
                     text(backups, s.Backups.length
                         ? 'Latest backup: ' + s.Backups[0].Name + ' (' + megabytes(s.Backups[0].Bytes) + '). ' + s.Backups.length + ' kept.'
                         : 'No backups yet. The first runs tonight at 03:00, or now with the button above.');

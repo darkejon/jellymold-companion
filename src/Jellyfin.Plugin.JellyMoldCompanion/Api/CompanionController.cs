@@ -30,11 +30,14 @@ public sealed class CompanionController : CompanionControllerBase
 
     private readonly CompanionService _companion;
     private readonly Imports.ImportService _imports;
+    private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer _measurer;
 
-    public CompanionController(CompanionService companion, Imports.ImportService imports)
+    public CompanionController(CompanionService companion, Imports.ImportService imports,
+        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer measurer)
     {
         _companion = companion;
         _imports = imports;
+        _measurer = measurer;
     }
 
     // — Discovery (§9.2) —
@@ -57,7 +60,7 @@ public sealed class CompanionController : CompanionControllerBase
             Features = new[]
             {
                 "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
-                "store", "household", "quiz", "segments", "home",
+                "store", "household", "quiz", "segments", "home", "pictureCrop",
             },
             Server = new
             {
@@ -441,6 +444,7 @@ public sealed class CompanionController : CompanionControllerBase
             QueueLength = _companion.Recording.Pending,
             OpenSessions = _companion.Recording.OpenSessions,
             Counts = SafeStatus(),
+            PictureCrop = SafePictureCrop(),
             Backups = database.ListBackups().Select(b => new { Name = Path.GetFileName(b.Path), TakenAt = b.TakenAt.UtcDateTime, b.Bytes }),
             People = _companion.Queries.Users().Select(u => new
             {
@@ -458,6 +462,24 @@ public sealed class CompanionController : CompanionControllerBase
     {
         var path = _companion.Database.Backup();
         return new { Name = Path.GetFileName(path) };
+    }
+
+    private object? SafePictureCrop()
+    {
+        try
+        {
+            return new
+            {
+                Measuring = CompanionService.Settings.MeasurePictureCrop,
+                _measurer.Problem,
+                _measurer.Waiting,
+                Counts = _measurer.Queries.Counts(),
+            };
+        }
+        catch (Exception e)
+        {
+            return new { Error = e.Message };
+        }
     }
 
     private object? SafeStatus()

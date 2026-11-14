@@ -956,6 +956,7 @@ is still to be asked.
 | 8 | *(new)* **The home screen in one request** — Continue Watching, Next Up and the newest per library from one call. | The app makes several requests per server per launch today; the plugin can assemble the same answer from Jellyfin's own queries in one. | **M** |
 | 9 | *(new)* **Find this media here** — given provider ids, this server's copy and the person's watch state in one call. | Makes the multi-server merge's look-ups (duplicates, the per-media override) one request per server instead of a search. | **S** |
 | 10 | *(new)* **Undo Jellyfin's guess after an idle stop** — when Jellyfin's idle timer stops a vanished client at its invented position (§6.1), put the resume point back where the viewer really was, and take back a *watched* tick that only the invented position earned. | The plugin already knows both positions. It would be the first thing the plugin **writes into Jellyfin's own watch data** rather than only recording — a product call, so a switch on the settings page, off by default. Fixes resume-lands-late for every app on the server, not only JellyMold. | **S** |
+| 11 | *(new, 2026-11-07)* **Black bars measured once per file** — the bars built into the picture of a widescreen film stored in a 16:9 frame (a Blu-ray remux of a 2.39:1 film is 1920 × 1080 with the bars as black pixels), so every app opens it already cropped, the first time too. The app finds them itself, but only about 8 seconds into a play, and its build of ffmpeg has no `cropdetect`. | Jellyfin's own ffmpeg (`IMediaEncoder.EncoderPath`, on both 10.10 and 12) looks at one keyframe at each of 12 points from 5% to 90% of the running time; the smallest bars seen win, and bars under 2% are ignored — the app's own rules. New files a few minutes after they arrive, anything an app asks for at once, the rest at night. Apps may report what they found, for a file not measured yet; the plugin's measurement always wins. | **S** |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
 fixes a real fault every app on the server has) → **4** → **3** → **2** → **5** → **8**. Idea 10 stays a switch
@@ -1040,9 +1041,17 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
   no album; the folder is treated as the book. A preview runs the whole import and rolls it back, so its counts are the
   commit's.
 
+### Decided 2026-11-07
+
+12. **Black bars, §16 idea 11** — asked for by the app's own session. Measured by the plugin, and **reported by
+    apps too** (the maintainer's choice): a report fills the gap until the plugin has measured the file, the plugin's
+    measurement always wins, and two reports keep the smaller bar on each side, so a second opinion only ever crops
+    less. On until switched off: it only reads the files, a keyframe at a time, at low priority, on one thread.
+    Measured here at 0.7 s for a 1080p HEVC episode on the Mac mini, reading 12 small slices of the file, not all of it.
+
 ### Still open
 
-12. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
+13. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
 ---
@@ -1065,6 +1074,8 @@ Read from source on 2026-10-30: Jellyfin at tag `v10.10.7`, and each plugin at i
 | User deleted (consumer form) | `Jellyfin.Server.Implementations/Users/UserManager.cs` |
 | Policies and claims | `MediaBrowser.Common/Api/Policies.cs`, `Jellyfin.Api/Auth/CustomAuthenticationHandler.cs` |
 | Media segment providers, the 12-hour task, skip-if-present | `MediaBrowser.Controller/MediaSegements/IMediaSegmentProvider.cs`, `MediaSegmentManager`, `MediaSegmentExtractionTask` |
+| ffmpeg's path for a plugin, on both 10.10.7 and 12.1 | `MediaBrowser.Controller/MediaEncoding/IMediaEncoder.cs` (`EncoderPath`) |
+| `cropdetect`'s report: first and last non-black row and column, crossed for a black frame | Run on 2026-11-07 with jellyfin-ffmpeg 8.1.2 (Jellyfin 12.1 on the Mac) and the one in the Jellyfin 10.10.7 image |
 | Subtitle extraction: all tracks in one pass, on first request, kept in `data/subtitles` | `MediaBrowser.MediaEncoding/Subtitles/SubtitleEncoder.cs` |
 | Quick Connect: six digits, ten minutes | `Emby.Server.Implementations/QuickConnect/QuickConnectManager.cs` |
 | SQLite versions (`Microsoft.Data.Sqlite` 8.0.11, SQLitePCLRaw 2.1.6) | `Directory.Packages.props` |

@@ -41,6 +41,12 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     /// <summary>When subtitles were last prepared, so each run picks up from there.</summary>
     public DateTime? SubtitlesPreparedUntil { get; set; }
 
+    /// <summary>
+    /// Measure the black bars built into each file's picture, so JellyMold opens a widescreen film already cropped (§16
+    /// idea 11). It only reads the files, a keyframe at a time and at low priority, so it is on until switched off.
+    /// </summary>
+    public bool MeasurePictureCrop { get; set; } = true;
+
     // — Keeping —
 
     /// <summary>Progress samples are diagnostics; the history is kept regardless. 0 keeps samples for good.</summary>
