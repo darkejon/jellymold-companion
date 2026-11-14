@@ -31,6 +31,8 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
 - **Both *Helping Jellyfin* switches are now on by default**: preparing subtitles ahead of time, and putting the
   resume point back after an app vanishes mid-play (Jellyfin 10.10). On a server where the settings page was saved
   with them off, they stay off.
+- On the settings page, the *Undo* button beside an import is readable in the dark theme, a finished import says
+  "699 added" rather than "699 to add", and *Import for* is shown only when the server has more than one person.
 - 146 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
   as having no bars, an app's report given until the plugin measured, and the nightly task.
 

@@ -211,9 +211,10 @@
                 'letterboxd': 'Letterboxd', 'csv': 'CSV'
             };
 
-            function describe(report) {
+            // A preview's figures, or (done) a finished import's.
+            function describe(report, done) {
                 const parts = [];
-                if (report.New) { parts.push(report.New + ' to add'); }
+                if (report.New) { parts.push(report.New + (done ? ' added' : ' to add')); }
                 if (report.Replaces) { parts.push(report.Replaces + ' replacing a less exact record'); }
                 if (report.AlreadyImported) { parts.push(report.AlreadyImported + ' already imported'); }
                 if (report.Duplicates) { parts.push(report.Duplicates + ' already recorded from a better source'); }
@@ -250,7 +251,7 @@
                         ApiClient.ajax({ type: 'POST', url: api('Imports/' + report.ImportId + '/Commit'), dataType: 'json' }).then(function (done) {
                             Dashboard.hideLoadingMsg();
                             box.innerHTML = '';
-                            box.appendChild(element('p', 'Imported: ' + describe(done)));
+                            box.appendChild(element('p', 'Imported: ' + describe(done, true)));
                             showImports();
                             showStatus();
                         }, failed);
@@ -298,11 +299,12 @@
                         const state = i.UndoneAt ? 'undone' : i.CommittedAt ? 'imported' : 'previewed, not imported';
                         const who = i.UserName ? ' for ' + i.UserName : ' for everyone';
                         const item = element('li', (sourceNames[i.Source] || i.Source) + who + ', '
-                            + new Date(i.CreatedAt).toLocaleString() + ' — ' + state + (i.Report && i.CommittedAt ? ': ' + describe(i.Report) : ''));
+                            + new Date(i.CreatedAt).toLocaleString() + ' — ' + state + (i.Report && i.CommittedAt ? ': ' + describe(i.Report, true) : ''));
                         if (i.CommittedAt && !i.UndoneAt) {
                             const undo = element('button');
                             undo.type = 'button';
-                            undo.className = 'emby-button';
+                            // Raised, like every other button here: a plain one is pale text on a pale ground in the dark theme.
+                            undo.className = 'raised emby-button';
                             undo.style.marginLeft = '1em';
                             undo.appendChild(element('span', 'Undo'));
                             undo.addEventListener('click', function () {
@@ -372,6 +374,11 @@
                     who.appendChild(option);
                     importWho.appendChild(option.cloneNode(true));
                 });
+                // With one person there is no one else to import for: the list stays chosen, out of sight.
+                const importHolder = importWho.closest('.selectContainer');
+                if (importHolder) {
+                    importHolder.style.display = people.length > 1 ? '' : 'none';
+                }
             }
 
             function load() {
