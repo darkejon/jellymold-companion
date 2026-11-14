@@ -48,7 +48,7 @@ On the local server unless it says otherwise. Most of Phase 3 is for the app to 
 
 | # | Do this | Expect |
 |---|---|---|
-| 1 | Settings page → *Helping Jellyfin* | Two switches, both off. The first says it is not needed on this server (Jellyfin 12 fixed it) |
+| 1 | Settings page → *Helping Jellyfin* | Two switches, both off (on by default since 2026-11-14). The first says it is not needed on this server (Jellyfin 12 fixed it) |
 | 2 | Switch on *Prepare subtitles ahead of time*, save; Dashboard → Scheduled Tasks → *JellyMold Companion* → **Prepare subtitles** → run | It finishes; a film with embedded subtitles added in the last week shows its subtitles at once when first chosen |
 | 3 | In the web client, open an episode JellyMold has learned an intro for (once the app posts them) | A **Skip Intro** button in the web client too |
 | 4 | Read the two switches' descriptions | Plain, and accurate about what each changes |

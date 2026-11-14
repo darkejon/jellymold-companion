@@ -17,7 +17,7 @@ namespace Jellyfin.Plugin.JellyMoldCompanion.Jellyfin;
 ///
 /// With the setting on, a few seconds after such a stop (once Jellyfin has saved its guess) this puts the resume point
 /// back to the last position the app really reported, and takes back a watched tick only the invented position earned.
-/// The one feature that writes into Jellyfin's own watch data, so off until chosen. Jellyfin 12 stops at the real
+/// The one feature that writes into Jellyfin's own watch data; on unless switched off. Jellyfin 12 stops at the real
 /// position itself, so there it does nothing.
 /// </summary>
 public sealed class IdleGuessCorrector : IHostedService

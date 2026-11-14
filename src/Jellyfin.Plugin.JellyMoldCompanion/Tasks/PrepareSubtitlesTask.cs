@@ -12,8 +12,8 @@ namespace Jellyfin.Plugin.JellyMoldCompanion.Tasks;
 /// Subtitles ready before they are needed (design §16 idea 3). The first request for any embedded subtitle of a file makes
 /// Jellyfin extract all of that file's subtitle tracks in one pass and keep them for good — slow on a NAS with a large
 /// file, which is how a chosen track came to look unchosen (2026-10-29). Nothing does it ahead of time; this task does,
-/// for items added since its last run, through Jellyfin's own extraction, so there is no second copy. Off until chosen:
-/// Jellyfin's pass takes picture-based tracks too, which can be tens of megabytes each.
+/// for items added since its last run, through Jellyfin's own extraction, so there is no second copy. On unless switched
+/// off; Jellyfin's pass takes picture-based tracks too, which can be tens of megabytes each.
 /// </summary>
 public sealed class PrepareSubtitlesTask : IScheduledTask
 {
@@ -38,7 +38,7 @@ public sealed class PrepareSubtitlesTask : IScheduledTask
 
     public string Key => "JellyMoldCompanionSubtitles";
 
-    public string Description => "Extracts the embedded subtitles of newly added films and episodes ahead of time, so they appear at once the first time they are chosen. Does nothing unless switched on in JellyMold Companion's settings.";
+    public string Description => "Extracts the embedded subtitles of newly added films and episodes ahead of time, so they appear at once the first time they are chosen. Does nothing if switched off in JellyMold Companion's settings.";
 
     public string Category => "JellyMold Companion";
 

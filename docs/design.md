@@ -957,7 +957,7 @@ is still to be asked.
 | 7 | **Session diagnostics** — the event log, readable by the person and their admin: "why did this leave Continue Watching?" | Falls out of Part 1 (§6.1); an endpoint and, later, a screen. | **S** |
 | 8 | *(new)* **The home screen in one request** — Continue Watching, Next Up and the newest per library from one call. | The app makes several requests per server per launch today; the plugin can assemble the same answer from Jellyfin's own queries in one. | **M** |
 | 9 | *(new)* **Find this media here** — given provider ids, this server's copy and the person's watch state in one call. | Makes the multi-server merge's look-ups (duplicates, the per-media override) one request per server instead of a search. | **S** |
-| 10 | *(new)* **Undo Jellyfin's guess after an idle stop** — when Jellyfin's idle timer stops a vanished client at its invented position (§6.1), put the resume point back where the viewer really was, and take back a *watched* tick that only the invented position earned. | The plugin already knows both positions. It would be the first thing the plugin **writes into Jellyfin's own watch data** rather than only recording — a product call, so a switch on the settings page, off by default. Fixes resume-lands-late for every app on the server, not only JellyMold. | **S** |
+| 10 | *(new)* **Undo Jellyfin's guess after an idle stop** — when Jellyfin's idle timer stops a vanished client at its invented position (§6.1), put the resume point back where the viewer really was, and take back a *watched* tick that only the invented position earned. | The plugin already knows both positions. It would be the first thing the plugin **writes into Jellyfin's own watch data** rather than only recording — a product call, so a switch on the settings page: off by default at first, on by default since 2026-11-14. Fixes resume-lands-late for every app on the server, not only JellyMold. | **S** |
 | 11 | *(new, 2026-11-07)* **Black bars measured once per file** — the bars built into the picture of a widescreen film stored in a 16:9 frame (a Blu-ray remux of a 2.39:1 film is 1920 × 1080 with the bars as black pixels), so every app opens it already cropped, the first time too. The app finds them itself, but only about 8 seconds into a play, and its build of ffmpeg has no `cropdetect`. | Jellyfin's own ffmpeg (`IMediaEncoder.EncoderPath`, on both 10.10 and 12) looks at one keyframe at each of 12 points from 5% to 90% of the running time; the smallest bars seen win, and bars under 2% are ignored — the app's own rules. New files a few minutes after they arrive, anything an app asks for at once, the rest at night. Apps may report what they found, for a file not measured yet; the plugin's measurement always wins. | **S** |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
@@ -1055,10 +1055,13 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
 
 13. **Music and audiobook settings are hidden** from the settings page until an app plays them (§11). Both are still
     recorded, with the settings they had.
+14. **Both *Helping Jellyfin* switches are on by default**: preparing subtitles ahead of time (§16 idea 3) and putting the
+    resume point back after an idle stop (idea 10). A default only reaches a server whose settings have never been
+    saved; one where they were saved off keeps them off.
 
 ### Still open
 
-14. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
+15. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
 ---

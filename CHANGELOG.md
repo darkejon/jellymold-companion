@@ -28,6 +28,9 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
 - Schema 4, by migration: black bars.
 - **The settings page no longer shows music and audiobook settings** (whether to record them, and their shortest
   plays), as no app plays them yet. Both are still recorded, with the settings they had.
+- **Both *Helping Jellyfin* switches are now on by default**: preparing subtitles ahead of time, and putting the
+  resume point back after an app vanishes mid-play (Jellyfin 10.10). On a server where the settings page was saved
+  with them off, they stay off.
 - 146 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
   as having no bars, an app's report given until the plugin measured, and the nightly task.
 
