@@ -67,6 +67,7 @@ tools/docker-10.10.sh load                             # install the 10.10 build
 JELLYFIN_TOKEN=… tools/live-check.py                   # play a film and an episode, check what was recorded (~2 min)
 tools/package.sh "What changed"                        # both zips + manifest.json
 JELLYFIN_TOKEN=… tools/catalog-install.py --server …   # install from the published repository, as an admin would
+tools/downloads.py                                     # downloads of each release, by Jellyfin version
 ```
 
 **Releasing:** `package.sh`, commit the manifest, then `gh release create v<release>` with both zips — the manifest
