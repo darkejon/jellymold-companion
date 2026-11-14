@@ -25,8 +25,9 @@
                     <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordMovies"><span>Films</span></label></div>
                     <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordEpisodes"><span>Episodes</span></label></div>
                     <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordVideos"><span>Other videos</span></label></div>
-                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordMusic"><span>Music</span></label></div>
-                    <div class="checkboxContainer"><label><input is="emby-checkbox" type="checkbox" id="RecordAudioBooks"><span>Audiobooks</span></label></div>
+                    <!-- Music and audiobooks are still recorded, but their settings are not shown until an app plays them
+                         (decided 2026-11-14): RecordMusic, RecordAudioBooks, MinimumMusicSeconds and MinimumAudioBookSeconds
+                         keep their saved values, because saving changes only the settings this page shows. -->
                     <div class="fieldDescription">Trailers, theme music, extras and Live TV are never recorded.</div>
                 </div>
 
@@ -42,12 +43,6 @@
                     <div id="jmcCompletion" class="fieldDescription"></div>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="MinimumVideoSeconds" min="0" max="3600" label="Shortest film or episode play that counts (seconds)">
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="number" id="MinimumMusicSeconds" min="0" max="600" label="Shortest song play that counts (seconds)">
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="number" id="MinimumAudioBookSeconds" min="0" max="3600" label="Shortest audiobook play that counts (seconds)">
                     </div>
                     <div class="fieldDescription">Shorter plays are still kept, with their seconds; they just don't count as watching.</div>
                     <div class="inputContainer">
@@ -143,9 +138,9 @@
         (function () {
             const pluginId = '224d7c95-988f-4534-965f-69a4f6e3d802';
             const page = document.querySelector('#JellyMoldCompanionPage');
-            const numbers = ['MinimumVideoSeconds', 'MinimumMusicSeconds', 'MinimumAudioBookSeconds', 'AbandonAfterDays',
+            const numbers = ['MinimumVideoSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
-            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'RecordMusic', 'RecordAudioBooks', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop'];
             let people = [];
 
             function api(path) {
@@ -204,9 +199,8 @@
                             + ' already stops a vanished app at the position it really reached.');
                     }
                     text(page.querySelector('#jmcCompletion'),
-                        'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time, and an audiobook '
-                        + 'with under ' + info.Rules.AudioBookCompletionMinutesLeft + ' minutes left. These follow the server\'s own '
-                        + 'resume settings (Dashboard → Playback → Resume). A song counts once half of it, or four minutes, has been heard.');
+                        'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time. This follows the '
+                        + 'server\'s own resume settings (Dashboard → Playback → Resume).');
                 });
             }
 

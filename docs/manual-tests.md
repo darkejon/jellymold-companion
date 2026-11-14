@@ -12,7 +12,7 @@ you are signed in on the same browser; the settings page's figures are the quick
 
 | # | Do this | Expect |
 |---|---|---|
-| 1 | Open the settings page | "Recording." and the counts; the completion line says 90% and 5 minutes for audiobooks |
+| 1 | Open the settings page | "Recording." and the counts; the completion line says 90% (music and audiobook settings are not shown since 2026-11-14) |
 | 2 | In the web client, play a film for two minutes, pause for a minute, play one more, stop | One entry under way, about three minutes of actual time; the pause not counted |
 | 3 | Play an episode, skip to near the end, let it play past 90%, stop | The episode watched, credited its full running time |
 | 4 | Tick a film you have not played as watched | It counts as watched, with no time added |

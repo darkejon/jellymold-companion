@@ -785,7 +785,9 @@ In Jellyfin's dashboard, under the plugin.
 - **People** — who is recorded (everyone by default), each with *recording since* and their history's size.
 - **Counting** — completion follows the server's resume settings (shown, with a link to where they are
   changed); the minimum play per kind; rewatch and abandon windows; which kinds are recorded (all on by
-  default: films, episodes, home videos, music, audiobooks).
+  default: films, episodes, home videos, music, audiobooks). **Music and audiobook settings are not shown** until
+  an app plays them (decided 2026-11-14): they would change nothing anyone can see yet. Both are still recorded,
+  with the settings they had.
 - **Imports** — run Jellyfin watch state and Playback Reporting; see every import with its preview, commit
   and undo; per-person file imports on someone's behalf.
 - **Export** — one person or everyone, JSON or CSV.
@@ -1049,9 +1051,14 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     less. On until switched off: it only reads the files, a keyframe at a time, at low priority, on one thread.
     Measured here at 0.7 s for a 1080p HEVC episode on the Mac mini, reading 12 small slices of the file, not all of it.
 
+### Decided 2026-11-14
+
+13. **Music and audiobook settings are hidden** from the settings page until an app plays them (§11). Both are still
+    recorded, with the settings they had.
+
 ### Still open
 
-13. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
+14. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
 ---
