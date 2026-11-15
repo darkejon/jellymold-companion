@@ -35,7 +35,9 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
   "699 added" rather than "699 to add", and *Import for* is shown only when the server has more than one person.
 - **Undo on the settings page works.** It waited for an answer Jellyfin's confirmation never gives (on 10.10 and 12
   alike), so clicking it did nothing.
-- 146 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
+- **Previews nobody imported are no longer listed** under *Imports so far*, and are cleared after a day. Looking an
+  import up no longer depends on it being among the newest 200.
+- 148 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
   as having no bars, an app's report given until the plugin measured, and the nightly task.
 
 ## 0.3.0 — 2026-10-30 (builds 10.0.3.0 and 12.0.3.0)

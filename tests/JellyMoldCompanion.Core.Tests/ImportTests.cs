@@ -71,6 +71,37 @@ public class ImporterTests
     }
 
     [Fact]
+    public void OnlyImportsThatWentAheadAreListed()
+    {
+        using var h = Started();
+        var abandoned = Preview(h, ImportSources.Letterboxd, Watched(Harness.Film(), Harness.Tuesday, "a"));
+        var imported = Import(h, ImportSources.Letterboxd, Watched(Harness.Film(), Harness.Tuesday, "a"));
+
+        var queries = new HistoryQueries(h.Database);
+        Assert.Equal(imported.ImportId, Assert.Single(queries.Imports(null)).Id);
+        Assert.Equal(imported.ImportId, Assert.Single(queries.Imports(Harness.Jon.Id)).Id);
+        // Still there to be imported, until it is cleared.
+        Assert.NotNull(queries.ImportById(abandoned.ImportId));
+    }
+
+    [Fact]
+    public void APreviewNobodyImportedIsClearedAfterADay()
+    {
+        using var h = Started();
+        var abandoned = Preview(h, ImportSources.Letterboxd, Watched(Harness.Film(), Harness.Tuesday, "a"));
+        var imported = Import(h, ImportSources.Letterboxd, Watched(Harness.Film(), Harness.Tuesday, "a"));
+        var queries = new HistoryQueries(h.Database);
+
+        h.Recorder.Apply(new ClearPreviews(Install.AddHours(23), Install.AddHours(23).AddDays(-1)));
+        Assert.NotNull(queries.ImportById(abandoned.ImportId));
+
+        h.Recorder.Apply(new ClearPreviews(Install.AddDays(2), Install.AddDays(1)));
+        Assert.Null(queries.ImportById(abandoned.ImportId));
+        Assert.NotNull(queries.ImportById(imported.ImportId));
+        Assert.Single(h.Viewings());
+    }
+
+    [Fact]
     public void ImportingTwiceAddsNothing()
     {
         using var h = Started();

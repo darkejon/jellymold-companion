@@ -527,7 +527,9 @@ undone on its own (§8.1).
 ### 8.1 Rules every import follows
 
 - **Preview, then commit.** An import first reports what it would add — new viewings, ones that duplicate
-  something already there, items it could not match — and writes nothing until committed.
+  something already there, items it could not match — and writes nothing until committed. A preview nobody
+  commits is not listed, and is cleared after a day: it is a note of what an import would add, not history
+  (decided 2026-11-14).
 - **Undo.** Undoing an import marks its viewings `undone`; any viewings it had superseded count again.
   Undoing an *import* is not deleting *history*: the rows stay, with the reason.
 - **What was played since stays.** Where live play carried an imported viewing on (episode 3 half-watched at

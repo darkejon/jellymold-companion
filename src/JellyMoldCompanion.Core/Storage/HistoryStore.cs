@@ -550,6 +550,13 @@ public sealed class HistoryStore : IDisposable
     public int DeleteSamplesBefore(DateTimeOffset cutoff) => Execute(
         "DELETE FROM progress_samples WHERE at < $cutoff;", ("$cutoff", Ms(cutoff)));
 
+    /// <summary>
+    /// Previews nobody imported, made before the cutoff (§8.1). A preview is rolled back as it is made, so this is only its
+    /// note of what importing it would add: nothing in anyone's history.
+    /// </summary>
+    public int DeletePreviewsBefore(DateTimeOffset cutoff) => Execute(
+        "DELETE FROM imports WHERE committed_at IS NULL AND undone_at IS NULL AND created_at < $cutoff;", ("$cutoff", Ms(cutoff)));
+
     // — Plumbing —
 
     internal static string? Id(Guid? id) => id?.ToString("N");

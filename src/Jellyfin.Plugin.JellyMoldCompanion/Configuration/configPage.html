@@ -296,11 +296,11 @@
                     }
                     const list = element('ul');
                     result.Items.forEach(function (i) {
-                        const state = i.UndoneAt ? 'undone' : i.CommittedAt ? 'imported' : 'previewed, not imported';
+                        const state = i.UndoneAt ? 'undone' : 'imported';
                         const who = i.UserName ? ' for ' + i.UserName : ' for everyone';
                         const item = element('li', (sourceNames[i.Source] || i.Source) + who + ', '
-                            + new Date(i.CreatedAt).toLocaleString() + ' — ' + state + (i.Report && i.CommittedAt ? ': ' + describe(i.Report, true) : ''));
-                        if (i.CommittedAt && !i.UndoneAt) {
+                            + new Date(i.CreatedAt).toLocaleString() + ' — ' + state + (i.Report ? ': ' + describe(i.Report, true) : ''));
+                        if (!i.UndoneAt) {
                             const undo = element('button');
                             undo.type = 'button';
                             // Raised, like every other button here: a plain one is pale text on a pale ground in the dark theme.

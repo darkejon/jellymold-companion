@@ -624,16 +624,25 @@ public sealed class HistoryQueries
     public sealed record ImportInfo(Guid Id, string Source, Guid? UserId, string? UserName, DateTime CreatedAt,
         DateTime? CommittedAt, DateTime? UndoneAt, Import.ImportReport? Report);
 
-    /// <summary>Imports, newest first: one person's, or — with no person — every import, server-wide ones included.</summary>
-    public IReadOnlyList<ImportInfo> Imports(Guid? userId)
+    /// <summary>
+    /// Imports that went ahead, newest first (undone ones too): one person's, or — with no person — every one, server-wide
+    /// ones included. A preview nobody imported is not listed; it is cleared after a day.
+    /// </summary>
+    public IReadOnlyList<ImportInfo> Imports(Guid? userId) => ReadImports(
+        $"WHERE i.committed_at IS NOT NULL{(userId is null ? string.Empty : " AND i.user_id = $u")} ORDER BY i.created_at DESC LIMIT 200",
+        ("$u", Id(userId)));
+
+    /// <summary>One import, a preview not yet imported included, however many there have been since.</summary>
+    public ImportInfo? ImportById(Guid importId) => ReadImports("WHERE i.import_id = $id", ("$id", Id(importId))).FirstOrDefault();
+
+    private List<ImportInfo> ReadImports(string where, params (string Name, object? Value)[] parameters)
     {
         using var c = _database.Open(readOnly: true);
         using var cmd = Command(c, $"""
             SELECT i.import_id, i.source, i.user_id, u.name, i.created_at, i.committed_at, i.undone_at, i.detail
             FROM imports i LEFT JOIN users u ON u.user_id = i.user_id
-            {(userId is null ? string.Empty : "WHERE i.user_id = $u")}
-            ORDER BY i.created_at DESC LIMIT 200;
-            """, ("$u", Id(userId)));
+            {where};
+            """, parameters);
         using var r = cmd.ExecuteReader();
         var list = new List<ImportInfo>();
         while (r.Read())
@@ -645,8 +654,6 @@ public sealed class HistoryQueries
 
         return list;
     }
-
-    public ImportInfo? ImportById(Guid importId) => Imports(null).FirstOrDefault(i => i.Id == importId);
 
     /// <summary>Whether this person already has a committed import from this source — for the baseline, whether it has been taken (§8.2).</summary>
     public bool HasCommittedImport(string source, Guid userId)

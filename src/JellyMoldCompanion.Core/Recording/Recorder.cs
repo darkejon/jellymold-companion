@@ -125,6 +125,10 @@ public sealed class Recorder
                 _store.InTransaction(() => _store.DeleteSamplesBefore(trim.Before));
                 return;
 
+            case ClearPreviews clear:
+                _store.InTransaction(() => _store.DeletePreviewsBefore(clear.Before));
+                return;
+
             case ClientSessionSubmission submission:
                 IReadOnlyList<Api.ClientSessionOutcome> outcomes = [];
                 _store.InTransaction(() => outcomes = ApplyClientSessions(submission));

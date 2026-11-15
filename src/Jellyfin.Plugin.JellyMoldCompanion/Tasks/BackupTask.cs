@@ -23,7 +23,7 @@ public sealed class BackupTask : IScheduledTask
 
     public string Key => "JellyMoldCompanionBackup";
 
-    public string Description => "Copies JellyMold Companion's history database, keeps a week of daily copies and a month of weekly ones, and drops progress samples past their retention.";
+    public string Description => "Copies JellyMold Companion's history database, keeps a week of daily copies and a month of weekly ones, drops progress samples past their retention, and clears previews of imports nobody went ahead with.";
 
     public string Category => "JellyMold Companion";
 
@@ -42,11 +42,14 @@ public sealed class BackupTask : IScheduledTask
         database.PruneBackups(Math.Max(1, settings.DailyBackupsToKeep), Math.Max(0, settings.WeeklyBackupsToKeep));
         progress.Report(80);
 
+        var now = DateTimeOffset.UtcNow;
         if (settings.SampleRetentionDays > 0)
         {
-            var now = DateTimeOffset.UtcNow;
             _companion.Enqueue(new TrimSamples(now, now.AddDays(-settings.SampleRetentionDays)));
         }
+
+        // A preview nobody imported within a day is not kept: it is a note of what an import would add, not history.
+        _companion.Enqueue(new ClearPreviews(now, now.AddDays(-1)));
 
         progress.Report(100);
         return Task.CompletedTask;

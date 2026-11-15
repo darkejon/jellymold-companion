@@ -231,8 +231,9 @@ Imported entries are `Kind: "Imported"`. Those from sources without durations (J
 are `Estimated: true` and credited the running time where it is known. Playback Reporting brings real seconds, and its
 plays become sessions, so they count towards streaks.
 
-`GET /Imports` lists the caller's imports (admins: `All=true` for every one); `GET /Imports/Sources` says which
-sources can be used here and now.
+`GET /Imports` lists the caller's imports that went ahead, undone ones included (admins: `All=true` for every one). A
+preview nobody imports is not listed, and is cleared after a day: show it again to import it. `GET /Imports/Sources`
+says which sources can be used here and now.
 
 **The CSV:** a header row, then one row per viewing. Columns, any order, case-insensitive:
 

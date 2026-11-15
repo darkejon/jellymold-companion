@@ -148,6 +148,9 @@ public sealed record WriteRequest(DateTimeOffset At, Func<Storage.HistoryStore, 
 /// <summary>Drop progress samples older than <see cref="Before"/> — diagnostics, kept 30 days by default (§3).</summary>
 public sealed record TrimSamples(DateTimeOffset At, DateTimeOffset Before) : RecorderMessage(At);
 
+/// <summary>Clear previews nobody imported, made before <paramref name="Before"/> (§8.1).</summary>
+public sealed record ClearPreviews(DateTimeOffset At, DateTimeOffset Before) : RecorderMessage(At);
+
 /// <summary>
 /// Watching an app did offline, posted afterwards (§6.3, §9.3). Goes through the recorder's queue like everything
 /// else, so it is ordered with live reports; the answer comes back through <see cref="Done"/>.
