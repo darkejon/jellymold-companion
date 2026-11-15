@@ -9,12 +9,28 @@
     "imageUrl": "https://raw.githubusercontent.com/darkejon/jellymold-companion/main/images/jellymold-companion.png",
     "versions": [
       {
+        "version": "12.0.4.0",
+        "changelog": "Measures the black bars in widescreen films, so JellyMold opens them already cropped. Undo on the settings page works, and previews nobody imported are cleared after a day. Preparing subtitles and putting the resume point back are now on by default. Music and audiobook settings are hidden for now. A play resumed as the plugin starts, and undoing an import, keep what was played.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.4.0/jellymold-companion_12.0.4.0.zip",
+        "checksum": "c72365e1213c29e3d04d1678142f0eb6",
+        "timestamp": "2026-11-15T00:03:38Z"
+      },
+      {
         "version": "12.0.3.0",
         "changelog": "Phase 3: a store for each person and the household, quiz results and a household leaderboard, learned skip segments for every app, putting the resume point back after an app vanishes (Jellyfin 10.10), subtitles prepared ahead, and the home screen in one request. Includes Phases 1 and 2.",
         "targetAbi": "12.1.0.0",
         "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.3.0/jellymold-companion_12.0.3.0.zip",
         "checksum": "33088bcf91d88a016b22f97f9de2f9b7",
         "timestamp": "2026-10-30T19:59:08Z"
+      },
+      {
+        "version": "10.0.4.0",
+        "changelog": "Measures the black bars in widescreen films, so JellyMold opens them already cropped. Undo on the settings page works, and previews nobody imported are cleared after a day. Preparing subtitles and putting the resume point back are now on by default. Music and audiobook settings are hidden for now. A play resumed as the plugin starts, and undoing an import, keep what was played.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.4.0/jellymold-companion_10.0.4.0.zip",
+        "checksum": "2bc6a0ab9d852884db937022fbec7b32",
+        "timestamp": "2026-11-15T00:03:38Z"
       },
       {
         "version": "10.0.3.0",
