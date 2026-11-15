@@ -782,7 +782,8 @@ discussing; keeping every progress sample forever is the only choice that does, 
 
 ## 11. The admin settings page
 
-In Jellyfin's dashboard, under the plugin.
+In Jellyfin's dashboard, under the plugin. It opens with a short note that the plugin is made for JellyMold, with a
+link to the app on the App Store (`https://apps.apple.com/app/id6813179451`, added 2026-11-14).
 
 - **People** — who is recorded (everyone by default), each with *recording since* and their history's size.
 - **Counting** — completion follows the server's resume settings (shown, with a link to where they are
