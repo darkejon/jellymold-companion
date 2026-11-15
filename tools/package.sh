@@ -55,6 +55,7 @@ manifest = json.loads(path.read_text()) if path.exists() else [{
                    "person from an app. Survives media being deleted from the library; never deletes history.",
     "owner": "darkejon",
     "category": "General",
+    "imageUrl": "https://raw.githubusercontent.com/darkejon/jellymold-companion/main/images/jellymold-companion.png",
     "versions": [],
 }]
 plugin = manifest[0]
