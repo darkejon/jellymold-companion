@@ -33,6 +33,8 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
   with them off, they stay off.
 - On the settings page, the *Undo* button beside an import is readable in the dark theme, a finished import says
   "699 added" rather than "699 to add", and *Import for* is shown only when the server has more than one person.
+- **Undo on the settings page works.** It waited for an answer Jellyfin's confirmation never gives (on 10.10 and 12
+  alike), so clicking it did nothing.
 - 146 unit tests. Checked live on Jellyfin 10.10.7 (Docker): a letterboxed test film measured exactly, the 16:9 ones
   as having no bars, an app's report given until the plugin measured, and the nightly task.
 

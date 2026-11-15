@@ -308,13 +308,19 @@
                             undo.style.marginLeft = '1em';
                             undo.appendChild(element('span', 'Undo'));
                             undo.addEventListener('click', function () {
+                                // Jellyfin's confirm (10.10 and 12) answers through the function it is given, and returns
+                                // nothing: waiting on what it returns meant Undo never happened.
                                 Dashboard.confirm('Its entries stop counting. They are kept, marked as undone, and anything it replaced counts again. Anything played since still counts.',
-                                    'Undo this import?').then(function () {
-                                    ApiClient.ajax({ type: 'POST', url: api('Imports/' + i.Id + '/Undo') }).then(function () {
-                                        showImports();
-                                        showStatus();
-                                    }, failed);
-                                });
+                                    'Undo this import?', function (yes) {
+                                        if (!yes) {
+                                            return;
+                                        }
+
+                                        ApiClient.ajax({ type: 'POST', url: api('Imports/' + i.Id + '/Undo') }).then(function () {
+                                            showImports();
+                                            showStatus();
+                                        }, failed);
+                                    });
                             });
                             item.appendChild(undo);
                         }

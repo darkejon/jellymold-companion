@@ -36,7 +36,7 @@ Imports. On the local server, where `jon`'s baseline has already been taken (16 
 | 2 | Export your Letterboxd diary (letterboxd.com → Settings → Data → Export), choose it under *Import for: jon*, *From: Letterboxd*, **Show what it would add** | A count of what it would add, what is not in this library, and a sample of rows with what will happen to each. Nothing added yet |
 | 3 | **Import these** | The list shows it imported; the figures at the top of the page go up |
 | 4 | Do step 2 again with the same file | *Already imported* for every row; nothing to add |
-| 5 | **Undo** it in the list | Its entries stop counting; the figures go back |
+| 5 | **Undo** it in the list, and confirm | Its entries stop counting; the figures go back; the list says *undone* (Undo did nothing before 2026-11-14) |
 | 6 | If you have a Trakt export, the same with *From: Trakt export* | As above; films and episodes matched by their ids |
 | 7 | Read the page's wording throughout the section | Plain, and accurate to what happened |
 
