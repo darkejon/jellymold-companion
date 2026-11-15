@@ -3,7 +3,9 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
-## Unreleased
+## 0.4.1 — 2026-11-14 (builds 10.0.4.1 and 12.0.4.1)
+
+https://github.com/darkejon/jellymold-companion/releases/tag/v0.4.1
 
 - The settings page opens with a short note that the plugin is made for JellyMold, the Jellyfin app for iPhone, iPad
   and Apple TV, with a link to it on the App Store.
