@@ -31,6 +31,9 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 
+        // JellyMold Stats in everyone's Jellyfin menu, while the setting is on: in front of Jellyfin's own request handling.
+        serviceCollection.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, Web.StatsMenuLink>();
+
         // One registration per event type: Jellyfin's container does not match a consumer of a base type to its
         // derived events, so a start is not a progress as far as it is concerned.
         serviceCollection.AddScoped<IEventConsumer<PlaybackStartEventArgs>, PlaybackListener>();

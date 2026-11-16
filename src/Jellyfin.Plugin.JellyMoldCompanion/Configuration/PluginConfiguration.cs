@@ -51,6 +51,14 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool MeasurePictureCrop { get; set; } = true;
 
+    // — Stats on the web —
+
+    /// <summary>
+    /// JellyMold Stats in everyone's Jellyfin menu, opening the stats page (design §11). On unless an admin takes it away
+    /// from the settings page (decided 2026-11-16): it is how people who are not admins find their stats.
+    /// </summary>
+    public bool StatsInEveryonesMenu { get; set; } = true;
+
     // — Keeping —
 
     /// <summary>Progress samples are diagnostics; the history is kept regardless. 0 keeps samples for good.</summary>

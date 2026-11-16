@@ -32,6 +32,9 @@
                 <p class="fieldDescription">Everyone on this server can see their own stats in a web browser, as JellyMold
                     shows them, at this address. Admins can choose whose stats to see there.</p>
                 <p><a id="jmcStatsLink" class="button-link" target="_blank" rel="noopener" href="#">Stats page</a></p>
+                <button is="emby-button" type="button" class="raised emby-button" id="jmcMenuLink"><span>Add a link to everyone’s menu</span></button>
+                <div id="jmcMenuLinkNote" class="fieldDescription">Puts “JellyMold Stats” in the side menu of Jellyfin in a browser,
+                    for everyone, opening their own stats in a new tab.</div>
             </div>
 
             <form id="JellyMoldCompanionForm">
@@ -414,6 +417,7 @@
                     showStatus();
                     showImports();
                     showStatsPage();
+                    showMenuLink(config);
                     Dashboard.hideLoadingMsg();
                 });
             }
@@ -424,6 +428,24 @@
                 const link = page.querySelector('#jmcStatsLink');
                 link.href = ApiClient.getUrl('JellyMold/Stats');
                 text(link, link.href);
+            }
+
+            // JellyMold Stats in everyone's menu: the plugin adds it to the web client's config.json as Jellyfin sends it,
+            // so it shows the next time Jellyfin is opened or reloaded in a browser (design §11).
+            function showMenuLink(config) {
+                const on = !!config.StatsInEveryonesMenu;
+                text(page.querySelector('#jmcMenuLink span'), on ? 'Remove the link from everyone’s menu' : 'Add a link to everyone’s menu');
+                text(page.querySelector('#jmcMenuLinkNote'), on
+                    ? 'Everyone has “JellyMold Stats” in the side menu of Jellyfin in a browser, from the next time they open or reload it.'
+                    : 'Puts “JellyMold Stats” in the side menu of Jellyfin in a browser, for everyone, opening their own stats in a new tab.');
+            }
+            function toggleMenuLink() {
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.StatsInEveryonesMenu = !config.StatsInEveryonesMenu;
+                    return ApiClient.updatePluginConfiguration(pluginId, config).then(function () { showMenuLink(config); });
+                }).catch(function () {
+                    Dashboard.alert('The menu could not be changed.');
+                });
             }
 
             function save(event) {
@@ -475,6 +497,7 @@
                     Dashboard.alert('The backup could not be made.');
                 });
             });
+            page.querySelector('#jmcMenuLink').addEventListener('click', toggleMenuLink);
             page.querySelector('#jmcExportCsv').addEventListener('click', function () { exportHistory('csv'); });
             page.querySelector('#jmcImportPreview').addEventListener('click', function () {
                 const source = page.querySelector('#jmcImportSource').value;
