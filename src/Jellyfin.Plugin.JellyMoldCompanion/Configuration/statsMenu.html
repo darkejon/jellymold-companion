@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JellyMold Stats</title>
+</head>
+<body>
+<!--
+    The dashboard's JellyMold Stats item: the stats page (/JellyMold/Stats) inside the dashboard, as Playback Reporting
+    shows its reports. The page uses the dashboard's own sign-in, so an admin sees their stats at once and can choose
+    anyone's. It is sized to fit, so the dashboard scrolls rather than a box inside it, and drawn in the dashboard's
+    theme rather than the computer's.
+-->
+<div id="JellyMoldStatsPage" data-role="page" class="page type-interior pluginConfigurationPage" data-title="JellyMold Stats">
+    <div data-role="content">
+        <div class="content-primary">
+            <iframe id="jmcStatsFrame" title="JellyMold stats"
+                    style="display: block; width: 100%; height: 80vh; border: 0; border-radius: 8px; visibility: hidden;"></iframe>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            const page = document.querySelector('#JellyMoldStatsPage');
+            const frame = page.querySelector('#jmcStatsFrame');
+
+            /** Whether the dashboard is in a dark theme, from its text: light text on a dark background. */
+            function dark() {
+                const rgb = (getComputedStyle(page).color.match(/[\d.]+/g) || []).map(Number);
+                return rgb.length >= 3 && 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] > 128;
+            }
+
+            // The page says how tall it is whenever that changes; shown once it has, so it never flashes at the wrong size.
+            function onMessage(event) {
+                if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
+                const said = event.data && event.data.jellymoldStats;
+                if (!said || typeof said.height !== 'number') return;
+                frame.style.height = Math.ceil(said.height) + 'px';
+                frame.style.visibility = 'visible';
+            }
+
+            page.addEventListener('pageshow', function () {
+                window.addEventListener('message', onMessage);
+                frame.style.visibility = 'hidden';
+                frame.src = ApiClient.getUrl('JellyMold/Stats', { embedded: 'dashboard', theme: dark() ? 'dark' : 'light' });
+            });
+            page.addEventListener('pagehide', function () {
+                window.removeEventListener('message', onMessage);
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>

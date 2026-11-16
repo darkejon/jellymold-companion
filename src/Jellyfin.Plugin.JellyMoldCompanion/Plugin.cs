@@ -31,12 +31,25 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Description =>
         "A permanent record of everything each person watches and listens to on this server, for JellyMold and any other app.";
 
+    /// <summary>
+    /// The settings page, then the stats page inside the dashboard: an item of its own in the dashboard's menu, among
+    /// the plugins' pages, as Playback Reporting has. The settings page stays first, since that is the one Jellyfin
+    /// opens for the plugin's settings.
+    /// </summary>
     public IEnumerable<PluginPageInfo> GetPages() =>
     [
         new PluginPageInfo
         {
             Name = "JellyMoldCompanion",
             EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.configPage.html", GetType().Namespace),
+        },
+        new PluginPageInfo
+        {
+            Name = "JellyMoldStats",
+            DisplayName = "JellyMold Stats",
+            EnableInMainMenu = true,
+            MenuIcon = "bar_chart",
+            EmbeddedResourcePath = string.Format(CultureInfo.InvariantCulture, "{0}.Configuration.statsMenu.html", GetType().Namespace),
         },
     ];
 }

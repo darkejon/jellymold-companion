@@ -29,7 +29,7 @@
 
   <ItemGroup>
     <None Remove="Configuration\configPage.html" />
-    <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configPage.html;Configuration\statsMenu.html" />
     <EmbeddedResource Include="Web\stats.html;Web\stats.css;Web\stats.js;Web\jellymold.png" />
   </ItemGroup>
 
