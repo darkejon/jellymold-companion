@@ -3,6 +3,28 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased
+
+- **Your stats on the web.** Each person can see their stats in any browser at `/JellyMold/Stats` on the server's
+  address, laid out as the JellyMold app shows them: the *Watched* card with the time, watching streaks, films and
+  series (every one a level deeper), recently watched, and each year. It uses the browser's Jellyfin sign-in where there
+  is one, or its own form; admins can choose whose stats to see. Nothing to install, and it loads nothing from anywhere
+  else.
+- At the top of the page, a banner for the JellyMold app: its icon, a line about it, and *Get the app*. Hiding it
+  hides it for good in that browser.
+- An admin's menu of whose stats to see lists every account on the server, starting with their own, and anyone
+  recorded whose account has since been deleted.
+- **JellyMold Stats in the dashboard.** Admins find the same page in the dashboard's menu, under *Plugins* beside
+  Playback Reporting's, signed in with the dashboard's own sign-in and drawn in the dashboard's theme.
+- **JellyMold Stats in everyone's menu.** A link to the page in the side menu of Jellyfin in a browser, for everyone,
+  not only admins, on from the start. The plugin adds it to the web client's menu as Jellyfin sends it, without
+  touching Jellyfin's files, so Jellyfin's updates do not remove it. Browsers are told to check that menu each time
+  Jellyfin opens, so the link appears or goes at once; a browser that opened Jellyfin before this update needs one
+  hard reload.
+- The settings page has a *Stats on the web* section: the page's address, and a button that takes the link out of
+  everyone's menu (or puts it back).
+- The settings page's note that the plugin is made for JellyMold is now the first thing under its title.
+
 ## 0.4.1 — 2026-11-14 (builds 10.0.4.1 and 12.0.4.1)
 
 https://github.com/darkejon/jellymold-companion/releases/tag/v0.4.1

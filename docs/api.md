@@ -332,6 +332,14 @@ The home screen in one request: `{ "ContinueWatching": [BaseItemDto], "NextUp": 
 BaseItemDto, "Items": [BaseItemDto] }] }`. The items are **Jellyfin's own item objects**, exactly as its endpoints give
 them, with `ProviderIds`, `UserData` and images — read them with the code that reads Jellyfin.
 
+### The stats page on the web (design §16 idea 12)
+
+Not part of the API, but an app can link to it: **`/JellyMold/Stats`** on the server's address (with any base URL
+before it), a page in any browser showing the signed-in person's stats as JellyMold lays them out, from the endpoints
+above. Open to anyone, holding no data; it signs in with the browser's Jellyfin sign-in to the same server, or its own
+form. Admins can choose whose stats to see. It shows this server's history only. `GET /Info` lists `statsPage` among
+its `Features` where the plugin serves it.
+
 ### Admin only
 
 - `GET /Admin/Status` — recording or not, any problem in plain words, database size and counts, backups, people, and

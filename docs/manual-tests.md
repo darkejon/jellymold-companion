@@ -19,10 +19,10 @@ you are signed in on the same browser; the settings page's figures are the quick
 | 5 | Untick it again straight away | It no longer counts |
 | 6 | In JellyMold, connect to this server, play an episode, then force-quit the app mid-play. Wait ten minutes | The session ends as *idle*, at the position you were at — not the minutes later Jellyfin would guess |
 | 7 | Play a few songs, skipping one after ten seconds | The skipped one is not a listen; the others are |
-| 8 | Settings page → untick yourself under *Who to record*, save, play something, tick yourself again | Nothing recorded while unticked |
-| 9 | Settings page → **Back up now** | A backup listed with today's date |
-| 10 | Settings page → **Export as CSV** for yourself | A file that opens in Numbers, one row per viewing |
-| 11 | Move a film you have played out of its library folder (to another folder — **not** Jellyfin's Delete, which deletes the file), then scan the library. Move it back afterwards | Its history stays, marked as no longer in the library; after moving it back and scanning, the film carries on from its history |
+| 7 | Settings page → untick yourself under *Who to record*, save, play something, tick yourself again | Nothing recorded while unticked |
+| 8 | Settings page → **Back up now** | A backup listed with today's date |
+| 9 | Settings page → **Export as CSV** for yourself | A file that opens in Numbers, one row per viewing |
+| 10 | Move a film you have played out of its library folder (to another folder — **not** Jellyfin's Delete, which deletes the file), then scan the library. Move it back afterwards | Its history stays, marked as no longer in the library; after moving it back and scanning, the film carries on from its history |
 
 Report anything that reads wrongly on the settings page as well as anything that counts wrongly.
 
@@ -69,3 +69,23 @@ On the local server. The plugin measures; the app reads what it measured once it
 | 6 | Read the switch's description | Plain, and accurate about what it does and costs |
 
 Rows 3 to 5 need JRDisk's films, so they wait for your say-so.
+
+## Stats on the web — 2026-11-14
+
+On the local server, in a browser. The checks have covered signing in and out, the picker, the menu link and
+both layouts on the 10.10 test server; these need a person and a real library.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Settings page → *Stats on the web* → open the address | The page, signed in as you with no form: the *Watched* card, streaks, films, series, recently watched and each year, with your real figures |
+| 2 | Compare it with the app's stats screen for this server | The same figures where the app shows only this server; where the app combines servers, the page has less |
+| 3 | *More* under Films, and under Series; try each order | Every film or series, in that order, headed with how many |
+| 4 | Click a film, a series and a recently watched row | Each opens its page in Jellyfin's web client |
+| 5 | As an admin, choose someone else from the menu at the top | Their stats, headed *Stats for* their name |
+| 6 | In a private window, open the address | Its own sign-in form. Sign in with an ordinary account: their stats, no menu, and *Sign out* |
+| 7 | Open the page on a phone, in light and dark | It fits the width, in the app's colours |
+| 8 | Dashboard menu → *Plugins* → *JellyMold Stats* | The stats page inside the dashboard, signed in, in the dashboard's theme, with one scroll bar (the dashboard's). *More*, then back, returns to where you were; a row opens the item in the dashboard |
+| 9 | In a private window, the stats page's sign-in form | It says plainly to use the Jellyfin username and password |
+| 10 | The banner at the top of the page, wide and on a phone | The app's icon, its line and *Get the app*, which opens the App Store. On a phone the button sits under the text. The cross hides it, and it stays hidden after a reload |
+| 11 | As an admin, the menu of whose stats | Every account on the server, you first; someone who has watched nothing here shows *Nothing watched here yet* |
+| 12 | After installing or updating, open Jellyfin in a browser as an ordinary account (a hard reload the first time) | *JellyMold Stats* in the side menu, opening their stats in a new tab, with nothing turned on. Settings page → *Remove the link from everyone's menu* takes it away at the next reload |

@@ -782,9 +782,34 @@ discussing; keeping every progress sample forever is the only choice that does, 
 
 ## 11. The admin settings page
 
-In Jellyfin's dashboard, under the plugin. It opens with a short note that the plugin is made for JellyMold, with a
-link to the app on the App Store (`https://apps.apple.com/app/id6813179451`, added 2026-11-14).
+In Jellyfin's dashboard, under the plugin. Under its title, first of all, a short note that the plugin is made for
+JellyMold, with a link to the app on the App Store (`https://apps.apple.com/app/id6813179451`, added 2026-11-14;
+moved under the title 2026-11-16).
 
+The plugin has a second dashboard page, **JellyMold Stats** (added 2026-11-16): an item of its own in the dashboard's
+menu, under *Plugins* beside Playback Reporting's, showing the stats page (§16 idea 12) inside the dashboard. The page
+uses the dashboard's sign-in, so an admin sees it at once with the choice of whose stats; it takes the dashboard's
+theme rather than the computer's, is sized to its content so the dashboard does the scrolling, and opens Jellyfin's
+own pages in the dashboard rather than inside itself. Jellyfin 10.10 gives every plugin's item a folder icon; 12 shows
+the one asked for (`bar_chart`).
+
+- **Stats on the web** (added 2026-11-14, §16 idea 12) — the stats page's address, to share with the household, and a
+  button that takes the page's link out of everyone's Jellyfin menu, or puts it back.
+
+  **JellyMold Stats is in everyone's Jellyfin menu** (added 2026-11-16), for people who are not admins and so never see
+  the dashboard's item. **On by default** (decided 2026-11-16: it is how most people will find their stats). This is
+  the second thing the plugin changes in Jellyfin itself (the first is idea 10), and the only one everyone sees. A link
+  under Jellyfin's sign-in form, in its login disclaimer, came first (2026-11-14) and was **dropped before release**
+  (2026-11-16): the menu reaches the same people every time they open Jellyfin, not only when they are signed out. Jellyfin gives plugins no place in an ordinary person's menu, but its
+  web client reads extra side-menu links from its `config.json`, fresh each time it loads, and opens each in a new tab
+  (10.10's classic menu and 12's both do). The plugin adds the link to that file **as Jellyfin sends it**, never to the
+  file itself (`StatsMenuLink`, in front of Jellyfin's own handling of requests; `WebMenuLink` in the core): no
+  permission to Jellyfin's folders is needed, and Jellyfin's updates, which replace the file, cannot undo it. Links an
+  admin put there by hand are kept, and one already pointing at the stats page is not doubled. Jellyfin sends the file
+  with no word on keeping it, so browsers keep it for weeks (a tenth of its age); the plugin has them ask again each
+  time, link or not, so turning it on or off shows the next time Jellyfin is opened. A browser that kept the file
+  before the plugin was updated needs one hard reload. Only Jellyfin in a browser, and the apps built on its web
+  client, have this menu.
 - **People** — who is recorded (everyone by default), each with *recording since* and their history's size.
 - **Counting** — completion follows the server's resume settings (shown, with a link to where they are
   changed); the minimum play per kind; rewatch and abandon windows; which kinds are recorded (all on by
@@ -805,6 +830,13 @@ link to the app on the App Store (`https://apps.apple.com/app/id6813179451`, add
 - **Within a household, people see only their own history**; admins see everyone's. The README says so
   plainly, because a person's viewing history is among the more revealing things they own.
 - **Admin endpoints use Jellyfin's admin policy**; everything else the ordinary one (§9.1).
+- **The stats page on the web** (`/JellyMold/Stats`, §16 idea 12) is open to anyone, as Jellyfin's own web client is,
+  and holds no data: everything on it comes from the API by the viewer's own sign-in, so the rules above hold there
+  too. In a browser where Jellyfin's web client is signed in to this server, the page uses that sign-in, matched by
+  the server's id so a sign-in to another server is never sent here, and sends the token alone (naming itself would
+  rename that device on the server). Otherwise it has its own sign-in form, which sends the password only to this
+  server and shows in Jellyfin's devices as *JellyMold Companion*; signing out there ends that sign-in on the server.
+  Its security policy lets it load and ask nothing from anywhere but its own server.
 - **Trakt and Simkl tokens**, when they exist, live in the plugin's database, are never returned by any
   endpoint and never exported.
 - **Nothing leaves the server** except what a person deliberately connects (Trakt, Simkl) and what they
@@ -962,6 +994,7 @@ is still to be asked.
 | 9 | *(new)* **Find this media here** — given provider ids, this server's copy and the person's watch state in one call. | Makes the multi-server merge's look-ups (duplicates, the per-media override) one request per server instead of a search. | **S** |
 | 10 | *(new)* **Undo Jellyfin's guess after an idle stop** — when Jellyfin's idle timer stops a vanished client at its invented position (§6.1), put the resume point back where the viewer really was, and take back a *watched* tick that only the invented position earned. | The plugin already knows both positions. It would be the first thing the plugin **writes into Jellyfin's own watch data** rather than only recording — a product call, so a switch on the settings page: off by default at first, on by default since 2026-11-14. Fixes resume-lands-late for every app on the server, not only JellyMold. | **S** |
 | 11 | *(new, 2026-11-07)* **Black bars measured once per file** — the bars built into the picture of a widescreen film stored in a 16:9 frame (a Blu-ray remux of a 2.39:1 film is 1920 × 1080 with the bars as black pixels), so every app opens it already cropped, the first time too. The app finds them itself, but only about 8 seconds into a play, and its build of ffmpeg has no `cropdetect`. | Jellyfin's own ffmpeg (`IMediaEncoder.EncoderPath`, on both 10.10 and 12) looks at one keyframe at each of 12 points from 5% to 90% of the running time; the smallest bars seen win, and bars under 2% are ignored — the app's own rules. New files a few minutes after they arrive, anything an app asks for at once, the rest at night. Apps may report what they found, for a file not measured yet; the plugin's measurement always wins. | **S** |
+| 12 | *(new, 2026-11-14)* **The stats page on the web** — each person's stats in any browser, at `/JellyMold/Stats` on the server's own address, laid out as the app's stats screen: the *Watched* card, streaks, films, series, recently watched and each year, with every film and series a level deeper. Only this server's history, where the app combines every server. | Built into the plugin (one page, a style sheet and a script, inside the assembly) and drawn from the API it already has, so its figures are the app's. Nothing to install; works behind a reverse proxy or a base URL. Rows open the item in Jellyfin's web client. Found from a link in everyone's Jellyfin menu, the dashboard's own item for admins, its address on the settings page, and a link in the app (the app's session). | **M** |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
 fixes a real fault every app on the server has) → **4** → **3** → **2** → **5** → **8**. Idea 10 stays a switch
@@ -1062,9 +1095,20 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     resume point back after an idle stop (idea 10). A default only reaches a server whose settings have never been
     saved; one where they were saved off keeps them off.
 
+15. **The stats page on the web, §16 idea 12**: the app's look, not Jellyfin's; **no quizzes** until the app's are
+    finished; **admins can choose whose stats** to see, everyone else sees only their own; and **ways in** — the
+    address on the settings page and a link in the app (a link under Jellyfin's sign-in form, added by an admin's
+    button, was built and then dropped on 2026-11-16 for the menu link below). For admins (2026-11-16): **JellyMold
+    Stats in the dashboard's menu**, as Playback Reporting has, showing the page inside the dashboard rather than
+    leaving it. Also 2026-11-16: a **banner for the app at the
+    top of the page** (its icon drawn from the app's own artwork and gradient; hidden for good once dismissed, in that
+    browser), and the admin's choice of whose stats covers **every account on the server**, not only those recorded,
+    starting with the admin's own. And **JellyMold Stats in everyone's Jellyfin menu**, on by default, which an admin
+    can take away.
+
 ### Still open
 
-15. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
+16. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
 ---
@@ -1096,3 +1140,4 @@ Read from source on 2026-10-30: Jellyfin at tag `v10.10.7`, and each plugin at i
 | Playback Reporting schema, local-time dates, 20 s rule, 3-month trim, admin-only API | `jellyfin-plugin-playbackreporting` v16: `Data/ActivityRepository.cs`, `EventMonitorEntryPoint.cs`, `TaskCleanDb.cs` |
 | Template layout; manifest format and MD5 check | `jellyfin-plugin-template` (2024 layout), `MediaBrowser.Model/Updates/*`, `InstallationManager.cs` |
 | Chapter Segments Provider patterns | `jellyfin-plugin-chapter-segments` v1.0.0, `Configuration/PluginConfiguration.cs` |
+| A sign-in's device renamed by a request naming another `Device` or `Version` | `Jellyfin.Server.Implementations/Security/AuthorizationContext.cs` |
