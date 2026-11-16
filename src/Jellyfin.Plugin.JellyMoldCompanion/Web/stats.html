@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex">
+  <title>JellyMold stats</title>
+  <link rel="stylesheet" href="Stats/stats.css">
+  <script src="Stats/stats.js" defer></script>
+</head>
+<body>
+  <!--
+    The JellyMold stats page (design §16 idea 12), served by JellyMold Companion. Everything on it is drawn by
+    stats.js from the plugin's API, by the viewer's own sign-in; this file is the frame.
+  -->
+  <header class="bar">
+    <div class="bar-inner">
+      <a class="brand" id="home" href="#">JellyMold</a>
+      <div class="bar-end" id="bar-end" hidden>
+        <label class="picker" id="picker" hidden>
+          <span class="visually-hidden">Whose stats</span>
+          <select id="person"></select>
+        </label>
+        <span class="who" id="who"></span>
+        <button type="button" class="link-button" id="sign-out" hidden>Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- JellyMold itself, first of all: the app these stats are made for. Once hidden, hidden for good in this browser. -->
+  <aside class="promo" id="promo" aria-label="The JellyMold app">
+    <div class="promo-inner card">
+      <span class="app-icon" aria-hidden="true"><img src="Stats/jellymold.png" alt=""></span>
+      <p class="promo-text"><strong>JellyMold</strong> The Jellyfin app for iPhone, iPad and Apple TV, with these stats built in.</p>
+      <a class="promo-get" href="https://apps.apple.com/app/id6813179451" target="_blank" rel="noopener">Get the app</a>
+      <button type="button" class="promo-hide" id="promo-hide" aria-label="Hide this">
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main id="main" tabindex="-1">
+    <p class="loading" id="starting">Loading…</p>
+  </main>
+
+  <template id="sign-in-template">
+    <section class="sign-in" aria-labelledby="sign-in-title">
+      <h1 id="sign-in-title">Your stats</h1>
+      <p class="sign-in-lead">Sign in with the username and password you use for Jellyfin on <strong data-server>this server</strong> to see everything you’ve watched there.</p>
+      <form class="card form" novalidate>
+        <label class="field">
+          <span>Jellyfin username</span>
+          <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password">
+        </label>
+        <p class="form-error" role="alert" hidden></p>
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+      <p class="fine">Your password goes only to this server, as when you sign in to Jellyfin.</p>
+    </section>
+  </template>
+
+  <footer class="foot" id="foot" hidden>
+    <p>Recorded by JellyMold Companion on <span id="server-name">this server</span>.</p>
+    <p><a href="https://apps.apple.com/app/id6813179451" target="_blank" rel="noopener">Get JellyMold</a> to see your stats on iPhone, iPad and Apple TV.</p>
+  </footer>
+</body>
+</html>

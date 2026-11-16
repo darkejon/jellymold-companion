@@ -60,7 +60,7 @@ public sealed class CompanionController : CompanionControllerBase
             Features = new[]
             {
                 "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
-                "store", "household", "quiz", "segments", "home", "pictureCrop",
+                "store", "household", "quiz", "segments", "home", "pictureCrop", "statsPage",
             },
             Server = new
             {
