@@ -352,6 +352,69 @@ these sources only where the feature is listed.
   library nightly; each title again a month later. A hundred titles go in one request, and the plugin uses at most half
   the key's daily allowance. Episodes are not rated (per-episode ratings are a paid MDBList feature).
 
+### Subtitles that keep time, for CarPlay and HomeView (design §16 idea 14)
+
+Jellyfin's HLS stream with subtitles that show on time in players that fetch every address themselves and draw Apple's
+subtitles — CarPlay, Apple's HomeView, an Apple TV under AirPlay. Jellyfin's own subtitle pieces are timed for MPEG-TS
+video, so with the fMP4 video Apple's players are sent every line shows about ten seconds late. Listed in `/Info`'s
+`Features` as `hlsSubtitles`.
+
+**How to use it:** take the `TranscodingUrl` Jellyfin's `PlaybackInfo` gives, swap its leading `/videos/` for
+`/JellyMold/v1/Videos/`, keep everything after the `?` as it is, and hand the player that address on the server's own
+address (base URL and all). Nothing else changes.
+
+| | |
+|---|---|
+| `GET /Videos/{itemId}/master.m3u8?…` | **The master playlist.** Exactly the query of Jellyfin's `TranscodingUrl`. Jellyfin's own master for that query, as Jellyfin gives it to the same caller, but for its addresses. `HEAD` too |
+| `GET /Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/subtitles.m3u8?SegmentContainer=mp4&ApiKey=…` | A subtitle playlist, as the master writes it |
+| `GET /Videos/{itemId}/{mediaSourceId}/Subtitles/{index}/stream.vtt?StartPositionTicks=…&EndPositionTicks=…&SegmentContainer=mp4&ApiKey=…` | One piece of it, as the playlist writes it |
+
+```
+GET /JellyMold/v1/Videos/d857cf18-e0bb-dd8c-9861-cc749e2bd0b9/master.m3u8?DeviceId=…&MediaSourceId=d857cf18e0bbdd8c9861cc749e2bd0b9&…&SubtitleStreamIndex=4&SegmentContainer=mp4&PlaySessionId=…&ApiKey=…&SubtitleMethod=Hls&…
+
+#EXTM3U
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="ENG Full - English - ASS",DEFAULT=YES,FORCED=NO,AUTOSELECT=YES,URI="d857cf18e0bbdd8c9861cc749e2bd0b9/Subtitles/4/subtitles.m3u8?SegmentContainer=mp4&ApiKey=…",LANGUAGE="eng"
+#EXT-X-STREAM-INF:BANDWIDTH=6901917,AVERAGE-BANDWIDTH=6901917,VIDEO-RANGE=SDR,CODECS="hvc1.1.4.L120.B0,ac-3",RESOLUTION=1920x1080,FRAME-RATE=25,SUBTITLES="subs"
+../../../../videos/d857cf18-e0bb-dd8c-9861-cc749e2bd0b9/main.m3u8?DeviceId=…&SegmentContainer=mp4&…&ApiKey=…
+
+#EXTM3U
+#EXT-X-TARGETDURATION:6
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXTINF:6.000,
+stream.vtt?StartPositionTicks=0&EndPositionTicks=60000000&SegmentContainer=mp4&ApiKey=…
+…
+#EXT-X-ENDLIST
+
+WEBVTT
+X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000
+
+00:00:39.170 --> 00:00:45.360
+A hundred years ago there were
+```
+
+- **The master's addresses.** Each `EXT-X-MEDIA:TYPE=SUBTITLES` rendition's `URI` is the plugin's subtitle playlist,
+  relative (`{mediaSourceId}/Subtitles/{index}/subtitles.m3u8?SegmentContainer=…&ApiKey=…`), for every text subtitle
+  track Jellyfin lists, with Jellyfin's own names, flags and languages. Every other relative address — the video
+  playlists, trickplay — becomes `../../../../videos/{itemId}/…`, which from the master reaches Jellyfin's own, its query
+  untouched. Absolute addresses are left alone. All of it resolves under whatever address the master was fetched from,
+  so it holds behind a base URL or a reverse proxy.
+- **Signing in from the address alone**: the `ApiKey` already in `TranscodingUrl` (Jellyfin 10.10 writes `api_key`, which
+  it also reads), or the usual header. **401** without either. The subtitle playlist and pieces carry the caller's token
+  as `ApiKey`, which both Jellyfin 10.10 and 12 read. Whatever else Jellyfin's own master answers (404, 500…) is passed
+  on as it is.
+- **The subtitle playlist** cuts the video's running time into **6-second pieces**, the last one shorter
+  (`#EXT-X-TARGETDURATION:6`), the whole list at once and closed.
+- **Each piece** is `text/vtt`. Its second line is the timing line, set for the video's container:
+  **`X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:00:00:00.000` for `SegmentContainer=mp4`** (fMP4), and `MPEGTS:900000` for anything
+  else, or none — as Jellyfin's own fix (PR #17299) does. Cues are at their times in the video, from Jellyfin's own
+  subtitle encoder: each in the piece it starts in, and on Jellyfin 12 also in any piece it runs on into. The container
+  is the one on the master's video lines, else the master request's.
+- **The item must be one the caller can see**, as on Jellyfin's own subtitle playlist: **404** otherwise, and for a
+  version or a text subtitle track that is not there. **400** for a piece that ends before it starts or is longer than
+  ten minutes. Picture-based subtitle tracks are never listed: Jellyfin burns them into the picture instead.
+
 ### `GET /Home?Limit=16`
 
 The home screen in one request: `{ "ContinueWatching": [BaseItemDto], "NextUp": [BaseItemDto], "Latest": [{ "Library":

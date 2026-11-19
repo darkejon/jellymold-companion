@@ -103,3 +103,21 @@ is accepted and `/Info` lists `ratings`; the nightly task fetched every identifi
 | 3 | Paste the key with a character missing, save | *MDBList did not accept this key* |
 | 4 | Read the field's description | Plain, and accurate about what it sends and what it costs |
 | 5 | On JRDisk, once released and with your say-so: enter the key, run *Fetch ratings* | A real library fetched in a handful of requests; the log line says how many titles had no id |
+
+## Subtitles in CarPlay — 2026-11-19
+
+Checked by script on both test servers, asking with the address alone as a car does (Planet Earth's English ASS track
+on the local 12.1 server; the test film's SRT track on the 10.10 one, as its ordinary account, and again behind a base
+URL): `/Info` lists `hlsSubtitles`; the master is Jellyfin's own line for line but for its addresses; its subtitle
+addresses reach the plugin's playlist of 6-second pieces, each opening `MPEGTS:0` for fMP4 (and `900000` for MPEG-TS),
+with the same cues at the same times as Jellyfin's own pieces; its video line still fetches Jellyfin's own `main.m3u8`;
+no token, or a wrong one, is refused; an item the account cannot see is refused, as Jellyfin refuses its own subtitle
+playlist. These need a person and the app.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Once the app uses it: in the CarPlay Simulator, play an episode or film with text subtitles on the local server | Lines appear as they are spoken, from the first one, with no relay running on the phone |
+| 2 | Scrub forward, then back | Lines catch up within a few seconds each time |
+| 3 | The same through HomeView, or AirPlay to an Apple TV | The same |
+| 4 | A film whose subtitles are a `.srt` file beside it, not inside it | The same |
+| 5 | On JRDisk, once released and with your say-so | The same; this is the server that will never have Jellyfin's own fix |

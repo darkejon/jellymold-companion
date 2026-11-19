@@ -3,6 +3,15 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased
+
+- **Subtitles on time in CarPlay and HomeView.** Players that draw Apple's own subtitles from Jellyfin's stream —
+  CarPlay, HomeView, an Apple TV under AirPlay — show every line about ten seconds late, because Jellyfin times its
+  subtitle pieces for a different kind of video from the one it sends them (Jellyfin's own fix is in no release yet,
+  and Jellyfin 10.10 will never have it). The plugin serves Jellyfin's stream with its own subtitles, timed right and
+  in 6-second pieces so lines appear sooner and catch up faster after a scrub. JellyMold uses it where the plugin is
+  installed; nothing to switch on.
+
 ## 0.6.0 — 2026-11-19 (builds 10.0.6.0 and 12.0.6.0)
 
 https://github.com/darkejon/jellymold-companion/releases/tag/v0.6.0

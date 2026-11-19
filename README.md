@@ -12,6 +12,8 @@ server — whichever app they use — and lets each person read their own histor
 - **Ratings from other sites**, optional: with your own free MDBList API key, IMDb, Rotten Tomatoes, Metacritic,
   Letterboxd and more for each film and series, so JellyMold can show the one each person prefers. Only the titles'
   ids are sent to MDBList, never who watches what.
+- **Subtitles on time in CarPlay and HomeView**, where Jellyfin's own show about ten seconds late: JellyMold plays
+  Jellyfin's stream with the plugin's subtitles, timed right. Nothing to set up.
 - **Stats in any browser.** Each person can see their stats at `http://<your server>/JellyMold/Stats`, laid out as
   JellyMold shows them: totals, streaks, films, series, recently watched and each year. Admins can choose whose, and
   everyone finds it in Jellyfin's own menu.
