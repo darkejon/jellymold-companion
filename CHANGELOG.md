@@ -3,7 +3,9 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
-## Unreleased
+## 0.8.0 — 2026-11-19 (builds 10.0.8.0 and 12.0.8.0)
+
+https://github.com/darkejon/jellymold-companion/releases/tag/v0.8.0
 
 - **Updates finish themselves.** Jellyfin installs new versions of the plugin by itself but never restarts for them,
   so a server nobody restarts went on running the old version for months. The plugin now restarts Jellyfin to finish

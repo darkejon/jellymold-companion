@@ -13,7 +13,7 @@
     targetAbi it meets, with no upper bound: without that, a 12 server would be offered the 10.10 build.
   -->
   <PropertyGroup>
-    <ReleaseVersion>0.7.0</ReleaseVersion>
+    <ReleaseVersion>0.8.0</ReleaseVersion>
   </PropertyGroup>
 
   <PropertyGroup>
