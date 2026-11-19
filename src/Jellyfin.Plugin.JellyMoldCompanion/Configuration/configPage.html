@@ -24,6 +24,10 @@
                     this server. Each person can read their own history from an app; admins can read everyone's.
                     History is never deleted by the plugin.</p>
                 <div id="jmcStatus" class="fieldDescription">Checking…</div>
+                <!-- An update installed and waiting for Jellyfin to restart (design §13a): shown only while there is one, in a
+                     box like the note about JellyMold, so it is not missed among the status lines. -->
+                <div id="jmcUpdate" style="display: none; margin: 0.8em 0 0; padding: 0.8em 1em;
+                     border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 8px;"></div>
             </div>
 
             <!-- The stats page on the web (design §16 idea 12): its address to share, and its link in everyone's menu. -->
@@ -110,6 +114,22 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h3 class="sectionTitle">Updates</h3>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="RestartForUpdates"><span>Restart Jellyfin to finish updating this plugin</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">Jellyfin installs new versions of the plugin by itself, but a
+                            new version only starts working once Jellyfin restarts, and Jellyfin never restarts by itself. With this on, the
+                            plugin restarts Jellyfin once for each new version, in the three hours from the time below, when nobody is playing
+                            anything and no scheduled task is running. It never does on a server with Playback Reporting installed, where
+                            Jellyfin's own restart can stop the server instead.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="time" id="RestartForUpdatesAt" label="From, on the server's clock">
+                        <div class="fieldDescription" id="jmcUpdateNote"></div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h3 class="sectionTitle">Keeping</h3>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="SampleRetentionDays" min="0" max="3650" label="Days to keep progress samples (0 keeps them for good)">
@@ -175,7 +195,8 @@
             const page = document.querySelector('#JellyMoldCompanionPage');
             const numbers = ['MinimumVideoSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
-            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop', 'FetchRatings'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop', 'FetchRatings',
+                'RestartForUpdates'];
             let people = [];
 
             function api(path) {
@@ -230,6 +251,7 @@
                 });
 
                 ApiClient.getJSON(api('Info')).then(function (info) {
+                    showUpdate(info);
                     if (info.Server && info.Server.IdleStopGuessFixedUpstream) {
                         text(page.querySelector('#jmcIdleNote'), 'Not needed on this server: Jellyfin ' + info.Server.Version
                             + ' already stops a vanished app at the position it really reached.');
@@ -238,6 +260,41 @@
                         'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time. This follows the '
                         + 'server\'s own resume settings (Dashboard → Playback → Resume).');
                 });
+            }
+
+            // — Updates (design §13a) —
+
+            // 10.0.8.0 and 12.0.8.0 are both release 0.8.0.
+            function release(version) {
+                return version.split('.').slice(1).join('.');
+            }
+
+            function showUpdate(info) {
+                const update = info.Update || {};
+                const notice = page.querySelector('#jmcUpdate');
+                const running = 'This is version ' + release(info.PluginVersion) + '.';
+                if (!update.Waiting) {
+                    notice.style.display = 'none';
+                    text(page.querySelector('#jmcUpdateNote'), running + ' No new version is waiting.');
+                    return;
+                }
+                const lines = ['Version ' + release(update.Waiting) + ' is installed, and starts working when Jellyfin restarts.'];
+                if (update.NoRestart === 'playbackReporting') {
+                    lines.push('Restart Jellyfin where it runs (Package Center, Docker, its service) to finish it. With Playback Reporting'
+                        + ' installed, Jellyfin’s own Restart button can stop the server instead.');
+                } else if (update.NoRestart === 'tried') {
+                    lines.push('The plugin restarted Jellyfin for it once, and it is still waiting. Restart Jellyfin where it runs'
+                        + ' (Package Center, Docker, its service) to finish it.');
+                } else if (update.RestartAt) {
+                    const at = new Date(update.RestartAt);
+                    lines.push(at <= new Date()
+                        ? 'The plugin will restart Jellyfin for it as soon as nobody is playing and no task is running.'
+                        : 'The plugin will restart Jellyfin for it ' + at.toLocaleString([], { weekday: 'long', hour: '2-digit', minute: '2-digit' })
+                            + ' (your time), once nobody is playing.');
+                }
+                notice.style.display = '';
+                text(notice, lines.join(' '));
+                text(page.querySelector('#jmcUpdateNote'), running + ' ' + lines.join(' '));
             }
 
             // — Ratings —
@@ -475,6 +532,7 @@
                     numbers.forEach(function (id) { page.querySelector('#' + id).value = config[id]; });
                     switches.forEach(function (id) { page.querySelector('#' + id).checked = config[id]; });
                     page.querySelector('#MdbListApiKey').value = config.MdbListApiKey || '';
+                    page.querySelector('#RestartForUpdatesAt').value = config.RestartForUpdatesAt || '04:00';
                     showPeople(config);
                     showStatus();
                     showImports();
@@ -519,11 +577,13 @@
                     const key = page.querySelector('#MdbListApiKey').value.trim();
                     const keyChanged = (config.MdbListApiKey || '') !== key;
                     config.MdbListApiKey = key || null;
+                    config.RestartForUpdatesAt = page.querySelector('#RestartForUpdatesAt').value || '04:00';
                     config.ExcludedUserIds = Array.prototype.filter.call(
                         page.querySelectorAll('#jmcPeople input[type=checkbox]'), function (box) { return !box.checked; })
                         .map(function (box) { return box.dataset.userId; });
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
+                        showStatus();
                         if (keyChanged || config.FetchRatings) {
                             checkRatingsKey();
                         }

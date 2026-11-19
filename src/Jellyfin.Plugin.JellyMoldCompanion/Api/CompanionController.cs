@@ -32,15 +32,18 @@ public sealed class CompanionController : CompanionControllerBase
     private readonly Imports.ImportService _imports;
     private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer _measurer;
     private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.RatingsFetcher _ratings;
+    private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.UpdateRestarter _updates;
 
     public CompanionController(CompanionService companion, Imports.ImportService imports,
         global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer measurer,
-        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.RatingsFetcher ratings)
+        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.RatingsFetcher ratings,
+        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.UpdateRestarter updates)
     {
         _companion = companion;
         _imports = imports;
         _measurer = measurer;
         _ratings = ratings;
+        _updates = updates;
     }
 
     // — Discovery (§9.2) —
@@ -54,6 +57,7 @@ public sealed class CompanionController : CompanionControllerBase
         var settings = CompanionService.Settings;
         var rules = _companion.Host.Rules(settings);
         var scope = global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.JellyfinHost.Scope(settings);
+        var update = _updates.Plan;
         return new
         {
             Name = "JellyMold Companion",
@@ -73,6 +77,19 @@ public sealed class CompanionController : CompanionControllerBase
                 IdleStopGuessFixedUpstream = global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.IdleGuessCorrector.FixedUpstream,
             },
             Recording = _companion.Recording.IsRecording,
+            // A newer version installed and waiting for Jellyfin to restart, and what the plugin will do about it (§13a).
+            Update = new
+            {
+                Waiting = update.Waiting?.ToString(),
+                RestartAt = update.Next?.UtcDateTime,
+                NoRestart = update.Never switch
+                {
+                    global::JellyMoldCompanion.Updates.NoRestart.Off => "off",
+                    global::JellyMoldCompanion.Updates.NoRestart.PlaybackReporting => "playbackReporting",
+                    global::JellyMoldCompanion.Updates.NoRestart.Tried => "tried",
+                    _ => null,
+                },
+            },
             Rules = new
             {
                 CompletionPercent = rules.MaxResumePercent,

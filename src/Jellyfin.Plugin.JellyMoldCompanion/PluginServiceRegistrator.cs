@@ -33,6 +33,10 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 
+        // Restarting Jellyfin, in quiet hours, to finish the plugin's own update.
+        serviceCollection.AddSingleton<UpdateRestarter>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<UpdateRestarter>());
+
         // JellyMold Stats in everyone's Jellyfin menu, while the setting is on: in front of Jellyfin's own request handling.
         serviceCollection.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, Web.StatsMenuLink>();
 

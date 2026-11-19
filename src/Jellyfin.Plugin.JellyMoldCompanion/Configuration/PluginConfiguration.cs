@@ -70,6 +70,21 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool StatsInEveryonesMenu { get; set; } = true;
 
+    // — Updates —
+
+    /// <summary>
+    /// Restart Jellyfin, in quiet hours, when a new version of this plugin is waiting for a restart (design §13a, §19
+    /// decision 19): Jellyfin installs updates by itself but never restarts for them. On unless switched off (decided
+    /// 2026-11-19); never with Playback Reporting installed, whose presence stops Jellyfin's own restart.
+    /// </summary>
+    public bool RestartForUpdates { get; set; } = true;
+
+    /// <summary>When the quiet hours start, on the server's clock, <c>HH:mm</c>. They last three hours.</summary>
+    public string RestartForUpdatesAt { get; set; } = "04:00";
+
+    /// <summary>The version the plugin last restarted Jellyfin for, so a restart that did not load it is never repeated.</summary>
+    public string? RestartedForVersion { get; set; }
+
     // — Keeping —
 
     /// <summary>Progress samples are diagnostics; the history is kept regardless. 0 keeps samples for good.</summary>
