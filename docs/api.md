@@ -90,12 +90,30 @@ Whether the plugin is here, and the rules it counts by.
   "Name": "JellyMold Companion", "PluginVersion": "12.0.1.0", "ApiVersion": 1,
   "Features": ["history", "summary", "changes", "clientSessions", "export", "sessions"],   // and "ratings" with a working MDBList key
   "Recording": true,
+  "Update": { "Waiting": "12.0.8.0", "RestartAt": "2026-11-20T09:00:00Z" },
   "Rules": { "CompletionPercent": 90, "AudioBookCompletionMinutesLeft": 5, "MusicListenedFraction": 0.5,
              "MusicListenedSeconds": 240, "MinimumVideoSeconds": 60, "MinimumMusicSeconds": 30,
              "MinimumAudioBookSeconds": 60, "RecordedKinds": ["Audio", "AudioBook", "Episode", "Movie", "Video"] },
   "You": { "UserId": "…", "IsAdmin": false, "Recorded": true, "RecordingSince": "2026-10-30T17:07:48Z" }
 }
 ```
+
+**`Update`** (from release 0.8.0; absent before it) is a newer version of the plugin, installed by Jellyfin and
+waiting for Jellyfin to restart (design §13a). Until then the server goes on running `PluginVersion`, and `Features`
+describes that version. Each field is left out when it has no value, so `"Update": {}` means nothing is waiting:
+
+- `Waiting` — the version waiting.
+- `RestartAt` — when the plugin will restart Jellyfin for it: the start of the quiet hours set on the settings page
+  (04:00 on the server's clock by default), as an instant in UTC. It restarts only while nobody is playing and no
+  scheduled task is running, any time in the three hours from then, or else the next night. A time in the past means
+  it is in those hours now, waiting for playback to end.
+- `NoRestart` — instead of `RestartAt`, why the plugin will not restart Jellyfin for it: `off` (switched off on the
+  settings page), `playbackReporting` (Playback Reporting is installed, and with it Jellyfin's own restart stops a
+  10.10 server instead of restarting it), or `tried` (it restarted Jellyfin once for this version, which is still
+  waiting). The server's owner has to restart Jellyfin where it runs.
+
+An app can tell an admin about a version waiting, as the settings page does. Restarting from the app is Jellyfin's
+own `POST /System/Restart`, which has the same trouble with Playback Reporting.
 
 ### `GET /Summary?Tz=Europe/London&Recent=5`
 

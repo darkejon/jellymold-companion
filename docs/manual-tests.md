@@ -121,3 +121,22 @@ playlist. These need a person and the app.
 | 3 | The same through HomeView, or AirPlay to an Apple TV | The same |
 | 4 | A film whose subtitles are a `.srt` file beside it, not inside it | The same |
 | 5 | On JRDisk, once released and with your say-so | The same; this is the server that will never have Jellyfin's own fix |
+
+## Updates that finish themselves — 2026-11-19
+
+Checked on the Docker 10.10.7 server and the local 12.1 server with test builds 0.7.1, 0.7.2 and 0.7.3 served from a
+test repository on the Mac, Jellyfin's own *Update Plugins* task installing each, and the quiet hours set to start a few
+minutes earlier: with 0.7.1 running and 0.7.2 waiting, the plugin restarted Jellyfin three minutes after it started, and
+it came back running 0.7.2 with nothing waiting, the restart in the activity log (10.10) and written down so it is not
+repeated. With Playback Reporting installed (10.10), 0.7.3 waited and the server was left alone, `/Info` saying why, and
+the settings page's notice said to restart Jellyfin where it runs. These need a person, or a real night.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Open the plugin's settings page while a new version is waiting | At the top: which version is waiting, and when the plugin will restart Jellyfin for it, in your own time |
+| 2 | The same with Playback Reporting installed | It says to restart Jellyfin where it runs, and why; the *Updates* section says the same |
+| 3 | Leave a film paused on the server through the quiet hours | No restart that night; it restarts the next night once nothing is playing |
+| 4 | After a restart, open Dashboard → Activity | *JellyMold Companion restarted Jellyfin to finish updating to …*, at a time in the quiet hours |
+| 5 | Change the time to 23:30, save, and reopen the page | The time is kept, and the notice says 23:30 on the server's clock in your own time |
+| 6 | On the local 12.1 server, a real release once it is out | The restart happens at 04:00 and the new version is running in the morning |
+| 7 | On JRDisk, which has Playback Reporting | No restart; the settings page says a version is waiting, and Package Center's Stop and Run finishes it |

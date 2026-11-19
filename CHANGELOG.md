@@ -3,6 +3,19 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased
+
+- **Updates finish themselves.** Jellyfin installs new versions of the plugin by itself but never restarts for them,
+  so a server nobody restarts went on running the old version for months. The plugin now restarts Jellyfin to finish
+  its own update, once per version, in quiet hours on the server's clock: from 04:00 for three hours, only while
+  nobody is playing and no scheduled task is running, or else the next night. Each restart is in Jellyfin's activity
+  log. The time can be changed, or the restart switched off, in a new *Updates* section of the settings page.
+- **Never with Playback Reporting installed.** On Jellyfin 10.10.7, Jellyfin's own restart stops a server with
+  Playback Reporting instead of restarting it (its Restart button does the same). Such a server is told instead: the
+  settings page says a new version is waiting, and to restart Jellyfin where it runs.
+- The settings page says at the top when a new version is waiting, and when it will start working. `/Info` reports
+  the same as `Update`, for apps to tell admins.
+
 ## 0.7.0 — 2026-11-19 (builds 10.0.7.0 and 12.0.7.0)
 
 https://github.com/darkejon/jellymold-companion/releases/tag/v0.7.0

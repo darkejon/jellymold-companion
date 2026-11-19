@@ -897,6 +897,19 @@ Repositories*. Each version entry carries its zip's address, an **MD5** checksum
 installing), a changelog and its `targetAbi`. The manifest lists the 10.10 build and the 12 build side by
 side; each server installs the newest version its ABI allows. Intro Skipper's manifest is the model.
 
+**An update waits for a restart.** Jellyfin's *Update Plugins* task (at startup, then every 24 hours) installs a
+new version into a folder of its own and marks it *Restart*; the old one goes on running, marked *Superceded*, until
+the server restarts. Jellyfin never restarts by itself, and nothing tells an admin who does not open *My Plugins*,
+so a server that is never restarted runs the version it started with for months. Jellyfin's own restart (the
+dashboard's button, `ISystemManager.Restart`, inside the same process) does load the new version: 0.6.0 to 0.7.0 in
+five seconds on the Docker 10.10.7 server, and test builds 0.7.1 to 0.7.2 on the local 12.1 server, by the plugin's
+own restart (tested 2026-11-19). But on 10.10.7 with **Playback
+Reporting 16** installed, that restart fails ("attempt to write a readonly database", in Jellyfin's own library
+database as it starts again) and the server stays down until its process is started again. Without Playback
+Reporting it comes back, with this plugin or without it; with Playback Reporting it fails, with this plugin or
+without it. Forum reports tie the same error to Playback Reporting. So the plugin restarts Jellyfin for its own
+update at a quiet hour, except where Playback Reporting is installed, and says when a version is waiting (§19, 19).
+
 **Settings a client needs are served by our own endpoints.** Jellyfin's plugin-configuration API is admin
 only, so `/Info` is how a non-admin app learns the rules in force (Streamyfin does the same).
 
@@ -925,9 +938,10 @@ only, so `/Info` is how a non-admin app learns the rules in force (Streamyfin do
 
   Unchanged: the one-second invented progress, the session ending with no stop, the resume settings and save
   reasons, the event-consumer pattern, the claims and policies.
-- **Jellyfin restarts in-process**, and a plugin's code is not reloaded by it: a new build needs the server
-  process itself restarted (`tools/load-local.sh` quits and reopens Jellyfin.app; the Docker server restarts its
-  container).
+- **Jellyfin restarts in-process**, and a build copied over the old one, in the same folder, is not reloaded by it:
+  a new dev build needs the server process itself restarted (`tools/load-local.sh` quits and reopens Jellyfin.app;
+  the Docker server restarts its container). An update from the catalog, in a folder of its own, is loaded by it
+  (§13a).
 - **The deleted-items recovery (§8.2) uses an interface 10.11 removed.** On 12 it would have to read
   Jellyfin's new database directly, or not exist. It matters most for servers that have been running for
   years, so the 10.10 build gets it first.
@@ -1145,6 +1159,27 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     - **Relative addresses throughout**, so it holds behind a base URL or a reverse proxy: checked behind `/jf` on the
       10.10 test server.
 
+19. **Updates are finished for the admin (§13a).** Jellyfin installs the plugin's new versions by itself but never
+    restarts for them, and the maintainer, like most owners, restarts JRDisk only when something goes wrong: months on
+    an old version, with no sign that a new one is waiting. So:
+    - **The plugin restarts Jellyfin for its own update, on by default**, in quiet hours on the server's clock: from
+      **04:00** for three hours, a time an admin can change on the settings page. Only while nobody is playing (paused
+      counts) and none of Jellyfin's scheduled tasks is running; otherwise it tries the next night. **Once per
+      version**: the version is written down before the restart, and if it is still waiting afterwards the plugin says
+      so and does not try again. Only for its own update, though the restart finishes any other plugin's that is
+      waiting too. Each restart goes in Jellyfin's activity log.
+    - **Never with Playback Reporting installed**, on either build: on 10.10.7 Jellyfin's own restart then stops the
+      server, and on a NAS nobody starts it again until morning or later. On 12 this is not tested yet, so it is held
+      back there too. Such a server gets the notice alone, which says to restart Jellyfin where it runs.
+    - **A notice while an update is waiting**: at the top of the settings page, and in `/Info` (`Update`) for the app to
+      show admins. It says which version is waiting and when the plugin will restart for it, or why it will not.
+    - Jellyfin's own restart, not the process's: a plugin cannot restart the process, and the in-process restart loads
+      a version from the catalog (tested on 10.10.7 and 12.1). Waiting three minutes after the server starts, and
+      looking every five.
+    - **A version waiting is read as Jellyfin's API reports it** (`LocalPlugin.GetPluginInfo().Status`), not from its
+      saved manifest: Jellyfin 12 marks it in memory only (`RestartRequired`), leaving the saved status as it was, so
+      reading the manifest found nothing waiting on 12.1. Both builds read it the same way.
+
 ### Still open
 
 16. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
@@ -1177,6 +1212,7 @@ Read from source on 2026-10-30: Jellyfin at tag `v10.10.7`, and each plugin at i
 | SQLite versions (`Microsoft.Data.Sqlite` 8.0.11, SQLitePCLRaw 2.1.6) | `Directory.Packages.props` |
 | Packages' licence GPL-3.0-only | `MediaBrowser.Controller.csproj`, `MediaBrowser.Model.csproj` |
 | Playback Reporting schema, local-time dates, 20 s rule, 3-month trim, admin-only API | `jellyfin-plugin-playbackreporting` v16: `Data/ActivityRepository.cs`, `EventMonitorEntryPoint.cs`, `TaskCleanDb.cs` |
+| An update waits for a restart; Jellyfin's own restart loads it; Playback Reporting 16 stops that restart on 10.10.7 | Tested 2026-11-19 on the Docker 10.10.7 server, with each plugin in and out; forum reports of the same error |
 | Template layout; manifest format and MD5 check | `jellyfin-plugin-template` (2024 layout), `MediaBrowser.Model/Updates/*`, `InstallationManager.cs` |
 | Chapter Segments Provider patterns | `jellyfin-plugin-chapter-segments` v1.0.0, `Configuration/PluginConfiguration.cs` |
 | A sign-in's device renamed by a request naming another `Device` or `Version` | `Jellyfin.Server.Implementations/Security/AuthorizationContext.cs` |

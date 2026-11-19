@@ -29,7 +29,11 @@ Works with **Jellyfin 10.10.7** and **Jellyfin 12.1 or later**. The right build 
    - Name: `JellyMold Companion`
    - URL: `https://raw.githubusercontent.com/darkejon/jellymold-companion/main/manifest.json`
 2. Open the **Catalog**, find **JellyMold Companion** under *General*, and install it.
-3. **Restart Jellyfin.**
+3. **Restart Jellyfin.** On Jellyfin 10.10 with Playback Reporting installed, restart it where it runs (Docker, a NAS
+   package, its service) rather than with the dashboard's Restart button, which stops such a server instead.
+
+Updates install themselves, and the plugin restarts Jellyfin to finish them, at 04:00 when nothing is playing (a
+setting). With Playback Reporting installed it does not, and the settings page says when a new version is waiting.
 
 Recording starts straight away for everyone. Settings are under **Dashboard → Plugins → JellyMold Companion**:
 what to record, who to record, the shortest play that counts, how many backups to keep, and export.
