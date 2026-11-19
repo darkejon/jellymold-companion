@@ -89,3 +89,17 @@ both layouts on the 10.10 test server; these need a person and a real library.
 | 10 | The banner at the top of the page, wide and on a phone | The app's icon, its line and *Get the app*, which opens the App Store. On a phone the button sits under the text. The cross hides it, and it stays hidden after a reload |
 | 11 | As an admin, the menu of whose stats | Every account on the server, you first; someone who has watched nothing here shows *Nothing watched here yet* |
 | 12 | After installing or updating, open Jellyfin in a browser as an ordinary account (a hard reload the first time) | *JellyMold Stats* in the side menu, opening their stats in a new tab, with nothing turned on. Settings page → *Remove the link from everyone's menu* takes it away at the next reload |
+
+## Ratings — 2026-11-19
+
+Checked by script on both test servers: no key offers nothing; a wrong key is refused and offers nothing; the real key
+is accepted and `/Info` lists `ratings`; the nightly task fetched every identified title (1 request on the local server,
+2 on the 10.10 one); an app's ask is answered within six seconds; the key is in no log. These need a person.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | Settings page → *Ratings* | The key field (hidden as you type), *Fetch ratings* on, and a line saying the key is accepted, how many titles have ratings and the requests used today |
+| 2 | Clear the key, save | The line says *No key yet*; the app stops offering the extra sources at its next launch |
+| 3 | Paste the key with a character missing, save | *MDBList did not accept this key* |
+| 4 | Read the field's description | Plain, and accurate about what it sends and what it costs |
+| 5 | On JRDisk, once released and with your say-so: enter the key, run *Fetch ratings* | A real library fetched in a handful of requests; the log line says how many titles had no id |

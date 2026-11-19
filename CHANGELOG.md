@@ -3,6 +3,16 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased (0.6.0)
+
+- **Ratings from other sites.** With an MDBList API key (free from mdblist.com) on the settings page, the plugin
+  fetches each film's and series' ratings from IMDb, Rotten Tomatoes (critics and audience), Metacritic, TMDb,
+  Letterboxd, Trakt, Roger Ebert and MyAnimeList, so JellyMold can show the one each viewer prefers. New titles a few
+  minutes after they arrive, anything an app asks for at once, and the rest nightly (*Fetch ratings*, 02:00); each
+  title again a month later. It uses at most half the key's daily allowance, and a hundred titles go in each request.
+  Only titles' ids are sent to MDBList. The key is checked with MDBList when it is saved, and apps are offered the
+  ratings only once it has been accepted.
+
 ## 0.5.0 — 2026-11-16 (builds 10.0.5.0 and 12.0.5.0)
 
 https://github.com/darkejon/jellymold-companion/releases/tag/v0.5.0

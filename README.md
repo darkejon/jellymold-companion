@@ -9,6 +9,9 @@ server — whichever app they use — and lets each person read their own histor
 - **Kept for good.** History survives the media being deleted from your library, plugin updates (the database is
   only ever added to), and a damaged disk (nightly backups). The plugin never deletes history; you can export it.
 - **Private by default.** Each person sees only their own history; admins can see everyone's.
+- **Ratings from other sites**, optional: with your own free MDBList API key, IMDb, Rotten Tomatoes, Metacritic,
+  Letterboxd and more for each film and series, so JellyMold can show the one each person prefers. Only the titles'
+  ids are sent to MDBList, never who watches what.
 - **Stats in any browser.** Each person can see their stats at `http://<your server>/JellyMold/Stats`, laid out as
   JellyMold shows them: totals, streaks, films, series, recently watched and each year. Admins can choose whose, and
   everyone finds it in Jellyfin's own menu.

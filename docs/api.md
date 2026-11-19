@@ -88,7 +88,7 @@ Whether the plugin is here, and the rules it counts by.
 ```json
 {
   "Name": "JellyMold Companion", "PluginVersion": "12.0.1.0", "ApiVersion": 1,
-  "Features": ["history", "summary", "changes", "clientSessions", "export", "sessions"],
+  "Features": ["history", "summary", "changes", "clientSessions", "export", "sessions"],   // and "ratings" with a working MDBList key
   "Recording": true,
   "Rules": { "CompletionPercent": 90, "AudioBookCompletionMinutesLeft": 5, "MusicListenedFraction": 0.5,
              "MusicListenedSeconds": 240, "MinimumVideoSeconds": 60, "MinimumMusicSeconds": 30,
@@ -325,6 +325,32 @@ it already cropped. Listed in `/Info`'s `Features` as `pictureCrop`.
   is measured once, and again if it is replaced.
 - **When:** a few minutes after a file is added, at once when an app asks for one not measured yet, and the rest of the
   library for up to two hours a night. Admins can switch it off on the settings page; reports are still kept and given.
+
+### Ratings (design §16 idea 13)
+
+A film's or series' ratings from other sites, fetched from MDBList with the server owner's own key. Listed in `/Info`'s
+`Features` as `ratings` **only while the server has an MDBList key that MDBList has accepted**, so an app should offer
+these sources only where the feature is listed.
+
+| | |
+|---|---|
+| `GET /Items/{itemId}/Ratings` | A film's or series' ratings. **404** until it has been fetched: it is then fetched ahead of everything else, usually within seconds. Also **404**, saying why, for a title with no TMDb, TheTVDB or IMDb id, and for anything that is not a film or series |
+
+```json
+{ "ItemId": "…", "FetchedAt": "2026-11-19T20:57:09Z",
+  "Ratings": [ { "Source": "imdb", "Value": 9.4, "Votes": 238036 }, { "Source": "letterboxd", "Value": 4.6, "Votes": 73986 },
+               { "Source": "tmdb", "Value": 8.6, "Votes": 1326 }, { "Source": "trakt", "Value": 91, "Votes": 4095 } ] }
+```
+
+- **Each value is on its source's own scale**, as the source shows it: `imdb`, `tmdb` and `myAnimeList` out of 10;
+  `letterboxd` out of 5; `tomatoes` (the Tomatometer), `tomatoesAudience` and `trakt` as percentages; `metacritic`
+  out of 100; `rogerEbert` in stars out of 4. MDBList itself gives TMDb out of 100 and Letterboxd out of 10; the plugin
+  converts them back.
+- **Only sources with a value are listed.** An empty `Ratings` means MDBList knows the title and has no ratings for it.
+- **Jellyfin's own two** (`CommunityRating`, `CriticRating`) are not repeated here: read them from the item as usual.
+- **When:** a few minutes after a title is added, at once when an app asks for one not fetched yet, and the rest of the
+  library nightly; each title again a month later. A hundred titles go in one request, and the plugin uses at most half
+  the key's daily allowance. Episodes are not rated (per-episode ratings are a paid MDBList feature).
 
 ### `GET /Home?Limit=16`
 

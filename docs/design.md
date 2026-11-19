@@ -995,6 +995,7 @@ is still to be asked.
 | 10 | *(new)* **Undo Jellyfin's guess after an idle stop** — when Jellyfin's idle timer stops a vanished client at its invented position (§6.1), put the resume point back where the viewer really was, and take back a *watched* tick that only the invented position earned. | The plugin already knows both positions. It would be the first thing the plugin **writes into Jellyfin's own watch data** rather than only recording — a product call, so a switch on the settings page: off by default at first, on by default since 2026-11-14. Fixes resume-lands-late for every app on the server, not only JellyMold. | **S** |
 | 11 | *(new, 2026-11-07)* **Black bars measured once per file** — the bars built into the picture of a widescreen film stored in a 16:9 frame (a Blu-ray remux of a 2.39:1 film is 1920 × 1080 with the bars as black pixels), so every app opens it already cropped, the first time too. The app finds them itself, but only about 8 seconds into a play, and its build of ffmpeg has no `cropdetect`. | Jellyfin's own ffmpeg (`IMediaEncoder.EncoderPath`, on both 10.10 and 12) looks at one keyframe at each of 12 points from 5% to 90% of the running time; the smallest bars seen win, and bars under 2% are ignored — the app's own rules. New files a few minutes after they arrive, anything an app asks for at once, the rest at night. Apps may report what they found, for a file not measured yet; the plugin's measurement always wins. | **S** |
 | 12 | *(new, 2026-11-14)* **The stats page on the web** — each person's stats in any browser, at `/JellyMold/Stats` on the server's own address, laid out as the app's stats screen: the *Watched* card, streaks, films, series, recently watched and each year, with every film and series a level deeper. Only this server's history, where the app combines every server. | Built into the plugin (one page, a style sheet and a script, inside the assembly) and drawn from the API it already has, so its figures are the app's. Nothing to install; works behind a reverse proxy or a base URL. Rows open the item in Jellyfin's web client. Found from a link in everyone's Jellyfin menu, the dashboard's own item for admins, its address on the settings page, and a link in the app (the app's session). | **M** |
+| 13 | *(new, 2026-11-19)* **Ratings from other sites** — IMDb, Rotten Tomatoes (critics and audience), Metacritic, TMDb, Letterboxd, Trakt, Roger Ebert and MyAnimeList for each film and series, so JellyMold can show the one each viewer prefers, where Jellyfin keeps two at most. Fetched from MDBList, which gathers them in one answer, **with the server owner's own free key**. | A key, a nightly task, a table, one endpoint. Asked for by the app's own session. | **S** |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
 fixes a real fault every app on the server has) → **4** → **3** → **2** → **5** → **8**. Idea 10 stays a switch
@@ -1105,6 +1106,20 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     browser), and the admin's choice of whose stats covers **every account on the server**, not only those recorded,
     starting with the admin's own. And **JellyMold Stats in everyone's Jellyfin menu**, on by default, which an admin
     can take away.
+
+### Decided 2026-11-19
+
+17. **Ratings, §16 idea 13**, asked for by the app's session. **The key is the server owner's**, entered on the
+    settings page; JellyMold holds none. OMDb's terms allow personal, non-commercial use only and MDBList publishes no
+    commercial terms, so one key for every JellyMold user would be commercial use with nothing allowing it, and would
+    share one allowance between every server. Each owner's free key is personal use of their own library, as Jellyfin's
+    own OMDb plugin is. **Offered to apps only once MDBList has accepted the key** (`/Info` lists `ratings`), so a
+    mistyped key offers nothing; the app hides these sources until then and says how to get them. **Half the key's
+    daily allowance at most**, since an owner may share it with other tools; a hundred titles a request (one request
+    counts once however many titles it names, measured), so a large library takes a handful. Films and series only.
+    Values on each source's own scale. Only titles' ids are sent to MDBList, never who watches what. The key is never
+    logged: it travels as a query parameter, so the plugin uses its own HTTP client rather than Jellyfin's, whose
+    handlers log addresses.
 
 ### Still open
 
