@@ -61,11 +61,11 @@ public sealed class CompanionController : CompanionControllerBase
             Release = typeof(CompanionController).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
             ApiVersion,
             // "ratings" only while there is an MDBList key MDBList has accepted, so an app offers its sources only where
-            // they can be given (§16 idea 13).
+            // they can be given (§16 idea 13). "hlsSubtitles": the HLS master with subtitles that keep time (idea 14).
             Features = new[]
             {
                 "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
-                "store", "household", "quiz", "segments", "home", "pictureCrop", "statsPage",
+                "store", "household", "quiz", "segments", "home", "pictureCrop", "statsPage", "hlsSubtitles",
             }.Concat(_ratings.Offering ? ["ratings"] : Array.Empty<string>()),
             Server = new
             {
