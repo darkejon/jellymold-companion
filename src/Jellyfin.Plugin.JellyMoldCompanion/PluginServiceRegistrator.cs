@@ -28,6 +28,8 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
 #endif
         serviceCollection.AddSingleton<PictureCropMeasurer>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<PictureCropMeasurer>());
+        serviceCollection.AddSingleton<RatingsFetcher>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<RatingsFetcher>());
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 

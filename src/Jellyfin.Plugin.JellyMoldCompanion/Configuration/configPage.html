@@ -94,6 +94,22 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h3 class="sectionTitle">Ratings</h3>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="password" id="MdbListApiKey" autocomplete="off" spellcheck="false" label="MDBList API key">
+                        <div class="fieldDescription">Lets JellyMold show ratings from IMDb, Metacritic, Letterboxd, Trakt, TMDb, Roger Ebert,
+                            MyAnimeList and Rotten Tomatoes' audience score, as well as the two Jellyfin keeps. Make a free account at
+                            <a is="emby-linkbutton" class="button-link" href="https://mdblist.com" target="_blank" rel="noopener">mdblist.com</a>
+                            and copy the API key from its Preferences page. A free key allows 1,000 requests a day; the plugin uses at most
+                            half, and a hundred titles go in each request, so a library of a thousand films takes ten. Only films' and
+                            series' ids are sent to MDBList, never who watches what. <span id="jmcRatingsNote"></span></div>
+                    </div>
+                    <div class="checkboxContainer">
+                        <label><input is="emby-checkbox" type="checkbox" id="FetchRatings"><span>Fetch ratings</span></label>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h3 class="sectionTitle">Keeping</h3>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="SampleRetentionDays" min="0" max="3650" label="Days to keep progress samples (0 keeps them for good)">
@@ -159,7 +175,7 @@
             const page = document.querySelector('#JellyMoldCompanionPage');
             const numbers = ['MinimumVideoSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
-            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop'];
+            const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop', 'FetchRatings'];
             let people = [];
 
             function api(path) {
@@ -205,6 +221,7 @@
                         }
                         text(page.querySelector('#jmcCropNote'), said.join(' '));
                     }
+                    showRatings(s.Ratings);
                     text(backups, s.Backups.length
                         ? 'Latest backup: ' + s.Backups[0].Name + ' (' + megabytes(s.Backups[0].Bytes) + '). ' + s.Backups.length + ' kept.'
                         : 'No backups yet. The first runs tonight at 03:00, or now with the button above.');
@@ -220,6 +237,50 @@
                     text(page.querySelector('#jmcCompletion'),
                         'Something counts as watched at ' + info.Rules.CompletionPercent + '% of its running time. This follows the '
                         + 'server\'s own resume settings (Dashboard → Playback → Resume).');
+                });
+            }
+
+            // — Ratings —
+
+            function showRatings(r) {
+                if (!r || r.Error) {
+                    return;
+                }
+                const said = [];
+                if (!r.HasKey) {
+                    said.push('No key yet.');
+                } else if (r.Key === 'Valid') {
+                    said.push('Key accepted.');
+                    if (r.Counts) {
+                        said.push('Ratings for ' + counted(r.Counts.Found, 'title', 'titles') + '.');
+                        if (r.Counts.NotFound) {
+                            said.push(r.Counts.NotFound + ' not known to MDBList.');
+                        }
+                    }
+                    if (r.DailyLimit) {
+                        said.push(r.UsedToday + ' of the ' + r.DailyLimit / 2 + ' requests the plugin allows itself today used'
+                            + (r.SpentToday ? '; the key\'s requests for today are used up, so it carries on tomorrow.' : '.'));
+                    }
+                    if (r.Waiting) {
+                        said.push(r.Waiting + ' waiting.');
+                    }
+                } else if (r.Key === 'Invalid') {
+                    said.push('MDBList did not accept this key. Check it was copied whole.');
+                } else if (r.Key === 'Unreachable') {
+                    said.push('MDBList could not be reached to check the key. It is tried again every ten minutes.');
+                } else {
+                    said.push('The key has not been checked yet.');
+                }
+                if (r.HasKey && !r.Fetching) {
+                    said.push('Fetching is switched off.');
+                }
+                text(page.querySelector('#jmcRatingsNote'), said.join(' '));
+            }
+
+            function checkRatingsKey() {
+                text(page.querySelector('#jmcRatingsNote'), 'Checking the key with MDBList…');
+                ApiClient.ajax({ type: 'POST', url: api('Admin/Ratings/CheckKey'), dataType: 'json' }).then(showRatings, function () {
+                    text(page.querySelector('#jmcRatingsNote'), 'The key could not be checked just now.');
                 });
             }
 
@@ -413,6 +474,7 @@
                     people = results[1];
                     numbers.forEach(function (id) { page.querySelector('#' + id).value = config[id]; });
                     switches.forEach(function (id) { page.querySelector('#' + id).checked = config[id]; });
+                    page.querySelector('#MdbListApiKey').value = config.MdbListApiKey || '';
                     showPeople(config);
                     showStatus();
                     showImports();
@@ -454,10 +516,18 @@
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     numbers.forEach(function (id) { config[id] = parseInt(page.querySelector('#' + id).value, 10) || 0; });
                     switches.forEach(function (id) { config[id] = page.querySelector('#' + id).checked; });
+                    const key = page.querySelector('#MdbListApiKey').value.trim();
+                    const keyChanged = (config.MdbListApiKey || '') !== key;
+                    config.MdbListApiKey = key || null;
                     config.ExcludedUserIds = Array.prototype.filter.call(
                         page.querySelectorAll('#jmcPeople input[type=checkbox]'), function (box) { return !box.checked; })
                         .map(function (box) { return box.dataset.userId; });
-                    ApiClient.updatePluginConfiguration(pluginId, config).then(Dashboard.processPluginConfigurationUpdateResult);
+                    ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                        if (keyChanged || config.FetchRatings) {
+                            checkRatingsKey();
+                        }
+                    });
                 });
                 return false;
             }

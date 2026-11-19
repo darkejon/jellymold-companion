@@ -31,13 +31,16 @@ public sealed class CompanionController : CompanionControllerBase
     private readonly CompanionService _companion;
     private readonly Imports.ImportService _imports;
     private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer _measurer;
+    private readonly global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.RatingsFetcher _ratings;
 
     public CompanionController(CompanionService companion, Imports.ImportService imports,
-        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer measurer)
+        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.PictureCropMeasurer measurer,
+        global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.RatingsFetcher ratings)
     {
         _companion = companion;
         _imports = imports;
         _measurer = measurer;
+        _ratings = ratings;
     }
 
     // — Discovery (§9.2) —
@@ -57,11 +60,13 @@ public sealed class CompanionController : CompanionControllerBase
             PluginVersion = typeof(CompanionController).Assembly.GetName().Version?.ToString(),
             Release = typeof(CompanionController).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,
             ApiVersion,
+            // "ratings" only while there is an MDBList key MDBList has accepted, so an app offers its sources only where
+            // they can be given (§16 idea 13).
             Features = new[]
             {
                 "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
                 "store", "household", "quiz", "segments", "home", "pictureCrop", "statsPage",
-            },
+            }.Concat(_ratings.Offering ? ["ratings"] : Array.Empty<string>()),
             Server = new
             {
                 Version = typeof(MediaBrowser.Controller.IServerApplicationHost).Assembly.GetName().Version?.ToString(3),
@@ -445,6 +450,7 @@ public sealed class CompanionController : CompanionControllerBase
             OpenSessions = _companion.Recording.OpenSessions,
             Counts = SafeStatus(),
             PictureCrop = SafePictureCrop(),
+            Ratings = SafeRatings(),
             Backups = database.ListBackups().Select(b => new { Name = Path.GetFileName(b.Path), TakenAt = b.TakenAt.UtcDateTime, b.Bytes }),
             People = _companion.Queries.Users().Select(u => new
             {
@@ -480,6 +486,40 @@ public sealed class CompanionController : CompanionControllerBase
         {
             return new { Error = e.Message };
         }
+    }
+
+    /// <summary>The ratings' state for the settings page. Never the key itself.</summary>
+    private object? SafeRatings()
+    {
+        try
+        {
+            var today = _ratings.Today;
+            return new
+            {
+                Fetching = CompanionService.Settings.FetchRatings,
+                HasKey = !string.IsNullOrWhiteSpace(CompanionService.Settings.MdbListApiKey),
+                Key = _ratings.KeyState.ToString(),
+                _ratings.Offering,
+                _ratings.Waiting,
+                UsedToday = today.Used,
+                DailyLimit = today.Limit,
+                SpentToday = today.Spent,
+                Counts = _ratings.Queries.Counts(),
+            };
+        }
+        catch (Exception e)
+        {
+            return new { Error = e.Message };
+        }
+    }
+
+    /// <summary>Admin only: check the MDBList key now, as the settings page does straight after saving.</summary>
+    [HttpPost("Admin/Ratings/CheckKey")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public async Task<ActionResult<object>> CheckRatingsKey(CancellationToken token)
+    {
+        await _ratings.EnsureKeyChecked(token, force: true).ConfigureAwait(false);
+        return SafeRatings()!;
     }
 
     private object? SafeStatus()

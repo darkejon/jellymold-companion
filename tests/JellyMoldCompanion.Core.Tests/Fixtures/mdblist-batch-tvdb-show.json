@@ -1,0 +1,88 @@
+[
+  {
+    "title": "Star Trek: Deep Space Nine",
+    "year": 1993,
+    "type": "show",
+    "ids": {
+      "imdb": "tt0106145",
+      "trakt": 579,
+      "tmdb": 580,
+      "tvdb": 72073,
+      "mal": null,
+      "mdblist": "4cd"
+    },
+    "ratings": [
+      {
+        "source": "imdb",
+        "value": 8.1,
+        "score": 81,
+        "votes": 78929,
+        "url": 406
+      },
+      {
+        "source": "metacritic",
+        "value": 74,
+        "score": 74,
+        "votes": 14,
+        "url": "/star-trek-deep-space-nine"
+      },
+      {
+        "source": "metacriticuser",
+        "value": 8.4,
+        "score": 84.0,
+        "votes": 356,
+        "url": null
+      },
+      {
+        "source": "trakt",
+        "value": 81,
+        "score": 81,
+        "votes": 4274,
+        "url": null
+      },
+      {
+        "source": "tomatoes",
+        "value": 91,
+        "score": 91,
+        "votes": 65,
+        "url": "/tv/star-trek-deep-space-nine",
+        "fresh": 1
+      },
+      {
+        "source": "popcorn",
+        "value": 89,
+        "score": 89,
+        "votes": 1000,
+        "url": "/tv/star-trek-deep-space-nine"
+      },
+      {
+        "source": "tmdb",
+        "value": 79,
+        "score": 79,
+        "votes": 1056,
+        "url": null
+      },
+      {
+        "source": "letterboxd",
+        "value": null,
+        "score": null,
+        "votes": null,
+        "url": null
+      },
+      {
+        "source": "rogerebert",
+        "value": null,
+        "score": null,
+        "votes": null,
+        "url": null
+      },
+      {
+        "source": "myanimelist",
+        "value": null,
+        "score": null,
+        "votes": null,
+        "url": null
+      }
+    ]
+  }
+]

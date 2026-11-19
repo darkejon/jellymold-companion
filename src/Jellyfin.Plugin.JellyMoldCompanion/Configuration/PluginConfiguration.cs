@@ -51,6 +51,17 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool MeasurePictureCrop { get; set; } = true;
 
+    // — Ratings —
+
+    /// <summary>
+    /// The server owner's own MDBList API key (design §16 idea 13), free from mdblist.com. Ratings are fetched with it, and
+    /// offered to apps, only once MDBList has accepted it. Never logged, and never in any answer but this page's own.
+    /// </summary>
+    public string? MdbListApiKey { get; set; }
+
+    /// <summary>Fetch ratings while there is a key. On by default: with no key it does nothing.</summary>
+    public bool FetchRatings { get; set; } = true;
+
     // — Stats on the web —
 
     /// <summary>
