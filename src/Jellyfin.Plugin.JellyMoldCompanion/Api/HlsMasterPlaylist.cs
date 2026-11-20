@@ -60,7 +60,8 @@ internal sealed class HlsMasterPlaylist : IStartupFilter
             var text = Encoding.UTF8.GetString(bytes);
             if (text.StartsWith("#EXTM3U", StringComparison.Ordinal))
             {
-                bytes = Encoding.UTF8.GetBytes(HlsSubtitles.RewriteMaster(text, master.ItemId, request.Query["SegmentContainer"].FirstOrDefault()));
+                bytes = Encoding.UTF8.GetBytes(HlsSubtitles.RewriteMaster(
+                    text, master.ItemId, request.Query["SegmentContainer"].FirstOrDefault(), request.Query["PlaySessionId"].FirstOrDefault()));
                 response.ContentLength = bytes.Length;
             }
         }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using Jellyfin.Plugin.JellyMoldCompanion.Jellyfin;
 using JellyMoldCompanion.Hls;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
@@ -14,7 +15,8 @@ namespace Jellyfin.Plugin.JellyMoldCompanion.Api;
 
 /// <summary>
 /// The subtitle playlists the plugin's HLS master points at (design §16 idea 14, <see cref="HlsMasterPlaylist"/>):
-/// 6-second pieces whose timing line is right for the video's segment container.
+/// 6-second pieces whose timing line is right for the video's segment container — and, on Jellyfin 10.10, for where the
+/// session's fMP4 video job began (design §19 #20, <see cref="VideoJobClock"/>).
 ///
 /// Asked for by players that send no header (CarPlay, HomeView, an Apple TV under AirPlay), so the caller is signed in
 /// from the address's own <c>ApiKey</c>, as Jellyfin's HLS addresses are, and every address written here carries it on.
@@ -32,12 +34,14 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
     private readonly ILibraryManager _library;
     private readonly IMediaSourceManager _mediaSources;
     private readonly ISubtitleEncoder _subtitles;
+    private readonly VideoJobClock _clock;
 
-    public HlsSubtitlesController(ILibraryManager library, IMediaSourceManager mediaSources, ISubtitleEncoder subtitles)
+    public HlsSubtitlesController(ILibraryManager library, IMediaSourceManager mediaSources, ISubtitleEncoder subtitles, VideoJobClock clock)
     {
         _library = library;
         _mediaSources = mediaSources;
         _subtitles = subtitles;
+        _clock = clock;
     }
 
     /// <summary>The subtitle track in 6-second pieces, each at <c>stream.vtt</c> beside this playlist.</summary>
@@ -47,6 +51,7 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
         [FromRoute, Required] string mediaSourceId,
         [FromRoute, Required, Range(0, 10_000)] int index,
         [FromQuery] string? segmentContainer,
+        [FromQuery] string? playSessionId,
         CancellationToken cancellationToken)
     {
         var (_, source, refusal) = await Find(itemId, mediaSourceId, index, cancellationToken).ConfigureAwait(false);
@@ -60,11 +65,15 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
             return Problem(StatusCodes.Status404NotFound, "This video has no running time, so its subtitles cannot be cut into pieces.");
         }
 
-        var playlist = HlsSubtitles.SubtitlePlaylist(source.RunTimeTicks.Value, HlsSubtitles.PieceQuery(Container(segmentContainer), Token));
+        var playlist = HlsSubtitles.SubtitlePlaylist(
+            source.RunTimeTicks.Value, HlsSubtitles.PieceQuery(Container(segmentContainer), PlaySession(playSessionId), Token));
         return File(Encoding.UTF8.GetBytes(playlist), "application/vnd.apple.mpegurl");
     }
 
-    /// <summary>One piece: the cues from its start to its end at their times in the video, with the timing line set.</summary>
+    /// <summary>
+    /// One piece: the cues from its start to its end at their times in the film, with the timing line set — for fMP4 on
+    /// Jellyfin 10.10, from where the play session's video job began.
+    /// </summary>
     [HttpGet("stream.vtt")]
     public async Task<ActionResult> Piece(
         [FromRoute, Required] Guid itemId,
@@ -73,6 +82,7 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
         [FromQuery, Required, Range(0, long.MaxValue)] long startPositionTicks,
         [FromQuery, Required, Range(1, long.MaxValue)] long endPositionTicks,
         [FromQuery] string? segmentContainer,
+        [FromQuery] string? playSessionId,
         CancellationToken cancellationToken)
     {
         if (endPositionTicks <= startPositionTicks || endPositionTicks - startPositionTicks > MaxPieceTicks)
@@ -86,7 +96,13 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
             return refusal;
         }
 
-        // Times kept as they are in the video (Jellyfin's CopyTimestamps), which the timing line then places.
+        // Where the video's clock reads zero, found while the cues are read: it can wait on a jump's new video job.
+        var container = Container(segmentContainer);
+        var videoStart = string.Equals(container, "mp4", StringComparison.OrdinalIgnoreCase) && PlaySession(playSessionId) is { } session
+            ? _clock.StartFor(session, mediaSourceId, startPositionTicks, endPositionTicks, cancellationToken)
+            : Task.FromResult<double?>(null);
+
+        // Times kept as they are in the film (Jellyfin's CopyTimestamps), which the timing line then places.
         var stream = await _subtitles.GetSubtitles(item!, mediaSourceId, index, "vtt", startPositionTicks, endPositionTicks, true, cancellationToken)
             .ConfigureAwait(false);
         string vtt;
@@ -96,7 +112,8 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
             vtt = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        return File(Encoding.UTF8.GetBytes(HlsSubtitles.SetTimestampMap(vtt, Container(segmentContainer))), "text/vtt");
+        var start = await videoStart.ConfigureAwait(false);
+        return File(Encoding.UTF8.GetBytes(HlsSubtitles.SetTimestampMap(vtt, container, start)), "text/vtt");
     }
 
     /// <summary>The token this request was signed in with, for the addresses it writes: Jellyfin keeps it as a claim.</summary>
@@ -105,6 +122,10 @@ public sealed class HlsSubtitlesController : CompanionControllerBase
     /// <summary>A container name as given, if it is one: letters and digits, a few at most.</summary>
     private static string? Container(string? given) =>
         given is { Length: > 0 and <= 8 } && given.All(char.IsAsciiLetterOrDigit) ? given : null;
+
+    /// <summary>A play session id as given, if it is one: Jellyfin's are 32 hex digits.</summary>
+    private static string? PlaySession(string? given) =>
+        given is { Length: > 0 and <= 64 } && given.All(c => char.IsAsciiLetterOrDigit(c) || c == '-') ? given : null;
 
     /// <summary>
     /// The video, if the caller can see it (Jellyfin's own check, by the caller's account; an API key sees everything, as

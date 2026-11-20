@@ -14,6 +14,9 @@ namespace JellyMoldCompanion.Hls;
 /// sets the value by the video's segment container. The plugin serves Jellyfin's own master playlist with only the
 /// subtitle playlists swapped for its own, which cut 6-second pieces and set the value the same way.
 ///
+/// On Jellyfin 10.10, fMP4 video begun mid-film — a resume, a jump — starts its clock where it began rather than at the
+/// start of the film, so the plugin also says where that was (<see cref="VideoJob"/>, design §19 #20).
+///
 /// Addresses are kept relative, so they hold behind a base URL or a reverse proxy. Everything here is text in and text
 /// out; the Jellyfin side is in the plugin.
 /// </summary>
@@ -25,8 +28,11 @@ public static class HlsSubtitles
 
     public const long TicksPerSecond = 10_000_000;
 
-    /// <summary>MPEG-TS video from Jellyfin starts at ten seconds (90 kHz clock); fMP4 video starts at zero.</summary>
+    /// <summary>MPEG-TS video from Jellyfin keeps the film's time ten seconds on (90 kHz clock); fMP4 video keeps it as
+    /// it is — on Jellyfin 10.10, only when its job began at the start of the film.</summary>
     public const long MpegTsOffset = 900_000;
+
+    private const int MpegTsClock = 90_000;
 
     /// <summary>The plugin's master playlist, at the address an app gives: Jellyfin's <c>/videos/</c> swapped for this.</summary>
     public const string MasterPrefix = "/JellyMold/v1/Videos/";
@@ -77,17 +83,20 @@ public static class HlsSubtitles
 
     /// <summary>
     /// Jellyfin's master playlist as the plugin serves it: unchanged except for its addresses. Each subtitle rendition
-    /// (<c>EXT-X-MEDIA:TYPE=SUBTITLES</c>) points at the plugin's subtitle playlist, with the token Jellyfin wrote there
-    /// and the video's segment container; every other relative address (the video playlists, trickplay) points back at
-    /// Jellyfin's own, as it resolved from Jellyfin's master. Absolute addresses are left alone.
+    /// (<c>EXT-X-MEDIA:TYPE=SUBTITLES</c>) points at the plugin's subtitle playlist, with the video's segment container,
+    /// its play session (so a piece can find the video job it goes with) and the token Jellyfin wrote there; every other
+    /// relative address (the video playlists, trickplay) points back at Jellyfin's own, as it resolved from Jellyfin's
+    /// master. Absolute addresses are left alone.
     /// </summary>
     /// <param name="master">Jellyfin's master playlist.</param>
     /// <param name="itemId">The item id as it appears in the request's path.</param>
     /// <param name="requestedContainer">The request's <c>SegmentContainer</c>, used when the video lines carry none.</param>
-    public static string RewriteMaster(string master, string itemId, string? requestedContainer)
+    /// <param name="requestedPlaySession">The request's <c>PlaySessionId</c>, used when the video lines carry none.</param>
+    public static string RewriteMaster(string master, string itemId, string? requestedContainer, string? requestedPlaySession = null)
     {
         var jellyfin = UpToServerRoot + "videos/" + itemId + "/";
-        var container = VideoContainer(master) ?? requestedContainer;
+        var container = VideoQueryValue(master, "SegmentContainer") ?? requestedContainer;
+        var playSession = VideoQueryValue(master, "PlaySessionId") ?? requestedPlaySession;
         var lines = master.Split('\n');
         for (var i = 0; i < lines.Length; i++)
         {
@@ -105,7 +114,7 @@ public static class HlsSubtitles
                 lines[i] = UriAttribute.Replace(line, match =>
                 {
                     var uri = match.Groups[1].Value;
-                    var rewritten = subtitles ? SubtitlePlaylistAddress(uri, container) : null;
+                    var rewritten = subtitles ? SubtitlePlaylistAddress(uri, container, playSession) : null;
                     return "URI=\"" + (rewritten ?? Repoint(uri, jellyfin)) + "\"";
                 }) + ending;
             }
@@ -121,7 +130,7 @@ public static class HlsSubtitles
     /// <summary>
     /// The plugin's subtitle playlist: <paramref name="runtimeTicks"/> cut into 6-second pieces (the last one shorter),
     /// each asked for at <c>stream.vtt</c> beside it with its start and end and <paramref name="pieceQuery"/> (the
-    /// segment container and the token). Video on demand: the whole list at once, closed.
+    /// segment container, the play session and the token). Video on demand: the whole list at once, closed.
     /// </summary>
     public static string SubtitlePlaylist(long runtimeTicks, string pieceQuery)
     {
@@ -157,13 +166,18 @@ public static class HlsSubtitles
         return builder.Append("#EXT-X-ENDLIST\n").ToString();
     }
 
-    /// <summary>The query every piece carries: the segment container, then the token. Values escaped.</summary>
-    public static string PieceQuery(string? segmentContainer, string? token)
+    /// <summary>The query every piece carries: the segment container, the play session, then the token. Values escaped.</summary>
+    public static string PieceQuery(string? segmentContainer, string? playSessionId, string? token)
     {
-        var parts = new List<string>(2);
+        var parts = new List<string>(3);
         if (!string.IsNullOrEmpty(segmentContainer))
         {
             parts.Add("SegmentContainer=" + Uri.EscapeDataString(segmentContainer));
+        }
+
+        if (!string.IsNullOrEmpty(playSessionId))
+        {
+            parts.Add("PlaySessionId=" + Uri.EscapeDataString(playSessionId));
         }
 
         if (!string.IsNullOrEmpty(token))
@@ -177,20 +191,41 @@ public static class HlsSubtitles
     /// <summary>
     /// The <c>X-TIMESTAMP-MAP</c> a piece should carry for video in <paramref name="segmentContainer"/>: <c>MPEGTS:0</c>
     /// for fMP4 (<c>mp4</c>), <c>MPEGTS:900000</c> for anything else, both at <c>LOCAL:00:00:00.000</c>, as Jellyfin's
-    /// own fix does.
+    /// own fix does. For fMP4 whose clock reads zero later in the film (<paramref name="videoStart"/>, seconds: a 10.10
+    /// job begun mid-film), <c>LOCAL</c> is that time instead, so a cue at that time in the film shows at the video's
+    /// zero.
     /// </summary>
-    public static string TimestampMap(string? segmentContainer) =>
-        "X-TIMESTAMP-MAP=MPEGTS:" + Offset(segmentContainer).ToString(CultureInfo.InvariantCulture) + ",LOCAL:00:00:00.000";
+    public static string TimestampMap(string? segmentContainer, double? videoStart = null)
+    {
+        if (!IsFmp4(segmentContainer))
+        {
+            return "X-TIMESTAMP-MAP=MPEGTS:" + MpegTsOffset.ToString(CultureInfo.InvariantCulture) + ",LOCAL:00:00:00.000";
+        }
 
-    public static long Offset(string? segmentContainer) =>
-        string.Equals(segmentContainer?.Trim(), "mp4", StringComparison.OrdinalIgnoreCase) ? 0 : MpegTsOffset;
+        var milliseconds = (long)Math.Round((videoStart ?? 0) * 1000, MidpointRounding.AwayFromZero);
+        return milliseconds >= 0
+            ? "X-TIMESTAMP-MAP=MPEGTS:0,LOCAL:" + WebVttTime(milliseconds)
+            : "X-TIMESTAMP-MAP=MPEGTS:" + (-milliseconds * (MpegTsClock / 1000)).ToString(CultureInfo.InvariantCulture) + ",LOCAL:00:00:00.000";
+    }
+
+    private static bool IsFmp4(string? segmentContainer) =>
+        string.Equals(segmentContainer?.Trim(), "mp4", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A WebVTT timestamp, <c>hh:mm:ss.ttt</c>, hours as many digits as they need.</summary>
+    private static string WebVttTime(long milliseconds)
+    {
+        var time = TimeSpan.FromMilliseconds(milliseconds);
+        return ((long)time.TotalHours).ToString("00", CultureInfo.InvariantCulture)
+            + time.ToString(@"\:mm\:ss\.fff", CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
-    /// A WebVTT piece with its timing line set for <paramref name="segmentContainer"/>: any <c>X-TIMESTAMP-MAP</c> already
-    /// in its header is taken out and the right one written straight after the <c>WEBVTT</c> line. Set rather than
-    /// adjusted, so it stays right whatever Jellyfin wrote. The cues are untouched.
+    /// A WebVTT piece with its timing line set for <paramref name="segmentContainer"/> and, for fMP4, where the video's
+    /// clock reads zero (<see cref="TimestampMap"/>): any <c>X-TIMESTAMP-MAP</c> already in its header is taken out and
+    /// the right one written straight after the <c>WEBVTT</c> line. Set rather than adjusted, so it stays right whatever
+    /// Jellyfin wrote. The cues are untouched.
     /// </summary>
-    public static string SetTimestampMap(string vtt, string? segmentContainer)
+    public static string SetTimestampMap(string vtt, string? segmentContainer, double? videoStart = null)
     {
         var text = vtt.TrimStart('﻿').Replace("\r\n", "\n", StringComparison.Ordinal);
         var lines = text.Split('\n').ToList();
@@ -218,19 +253,19 @@ public static class HlsSubtitles
             }
         }
 
-        lines.Insert(1, TimestampMap(segmentContainer));
+        lines.Insert(1, TimestampMap(segmentContainer, videoStart));
         return string.Join('\n', lines);
     }
 
-    /// <summary>The <c>SegmentContainer</c> of the first video playlist the master points at, if it names one.</summary>
-    private static string? VideoContainer(string master)
+    /// <summary>A value from the query of the first video playlist the master points at, if it carries one.</summary>
+    private static string? VideoQueryValue(string master, string name)
     {
         foreach (var raw in master.Split('\n'))
         {
             var line = raw.Trim();
             if (line.Length > 0 && !line.StartsWith('#'))
             {
-                return QueryValue(line, "SegmentContainer");
+                return QueryValue(line, name);
             }
         }
 
@@ -239,10 +274,10 @@ public static class HlsSubtitles
 
     /// <summary>
     /// The plugin's subtitle playlist for one of Jellyfin's (<c>{mediaSourceId}/Subtitles/{index}/subtitles.m3u8?…</c>):
-    /// the same relative path, which from the plugin's master reaches the plugin, with the container and Jellyfin's token.
-    /// Null for an address of any other shape, which then keeps pointing at Jellyfin's own.
+    /// the same relative path, which from the plugin's master reaches the plugin, with the container, the play session and
+    /// Jellyfin's token. Null for an address of any other shape, which then keeps pointing at Jellyfin's own.
     /// </summary>
-    private static string? SubtitlePlaylistAddress(string uri, string? container)
+    private static string? SubtitlePlaylistAddress(string uri, string? container, string? playSession)
     {
         var query = uri.IndexOf('?', StringComparison.Ordinal);
         var path = query < 0 ? uri : uri[..query];
@@ -252,7 +287,7 @@ public static class HlsSubtitles
         }
 
         var token = QueryValue(uri, "ApiKey") ?? QueryValue(uri, "api_key");
-        var pieceQuery = PieceQuery(container, token);
+        var pieceQuery = PieceQuery(container, playSession, token);
         return pieceQuery.Length == 0 ? path : path + "?" + pieceQuery;
     }
 

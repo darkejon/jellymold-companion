@@ -60,15 +60,25 @@ public class HlsSubtitlesTests
     // — The master —
 
     [Fact]
-    public void SubtitleRenditionsPointAtThePluginsPlaylistWithTheContainerAndToken()
+    public void SubtitleRenditionsPointAtThePluginsPlaylistWithTheContainerPlaySessionAndToken()
     {
         var uris = SubtitleUris(HlsSubtitles.RewriteMaster(Master12, ItemId, null)).ToList();
         Assert.Equal(
             [
-                $"{Source}/Subtitles/3/subtitles.m3u8?SegmentContainer=mp4&ApiKey={Token}",
-                $"{Source}/Subtitles/4/subtitles.m3u8?SegmentContainer=mp4&ApiKey={Token}",
+                $"{Source}/Subtitles/3/subtitles.m3u8?SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}",
+                $"{Source}/Subtitles/4/subtitles.m3u8?SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}",
             ],
             uris);
+    }
+
+    [Fact]
+    public void ThePlaySessionComesFromTheVideoLineThenTheRequest()
+    {
+        // A piece finds its video job by it (design §19 #20).
+        var noneNamed = Master12.Replace("&PlaySessionId=7bd2", string.Empty, StringComparison.Ordinal);
+        Assert.All(SubtitleUris(HlsSubtitles.RewriteMaster(noneNamed, ItemId, null, "e41f")), uri => Assert.Contains("&PlaySessionId=e41f&", uri, StringComparison.Ordinal));
+        Assert.All(SubtitleUris(HlsSubtitles.RewriteMaster(noneNamed, ItemId, null)), uri => Assert.DoesNotContain("PlaySessionId", uri, StringComparison.Ordinal));
+        Assert.All(SubtitleUris(HlsSubtitles.RewriteMaster(Master12, ItemId, null, "e41f")), uri => Assert.Contains("&PlaySessionId=7bd2&", uri, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -76,7 +86,7 @@ public class HlsSubtitlesTests
     {
         var uri = SubtitleUris(HlsSubtitles.RewriteMaster(Master12, ItemId, null)).Last();
         Assert.Equal(
-            $"https://example.org/jellyfin/JellyMold/v1/Videos/{ItemId}/{Source}/Subtitles/4/subtitles.m3u8?SegmentContainer=mp4&ApiKey={Token}",
+            $"https://example.org/jellyfin/JellyMold/v1/Videos/{ItemId}/{Source}/Subtitles/4/subtitles.m3u8?SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}",
             new Uri(PluginMaster, uri).ToString());
     }
 
@@ -164,13 +174,13 @@ public class HlsSubtitlesTests
     public void TheTrackIsCutIntoSixSecondPiecesTheLastOneShorter()
     {
         var runtime = 20 * HlsSubtitles.TicksPerSecond + 5_000_000;   // 20.5 s
-        var playlist = HlsSubtitles.SubtitlePlaylist(runtime, HlsSubtitles.PieceQuery("mp4", Token));
+        var playlist = HlsSubtitles.SubtitlePlaylist(runtime, HlsSubtitles.PieceQuery("mp4", "7bd2", Token));
         Assert.Equal(
             "#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-VERSION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:VOD\n"
-            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=0&EndPositionTicks=60000000&SegmentContainer=mp4&ApiKey={Token}\n"
-            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=60000000&EndPositionTicks=120000000&SegmentContainer=mp4&ApiKey={Token}\n"
-            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=120000000&EndPositionTicks=180000000&SegmentContainer=mp4&ApiKey={Token}\n"
-            + $"#EXTINF:2.500,\nstream.vtt?StartPositionTicks=180000000&EndPositionTicks=205000000&SegmentContainer=mp4&ApiKey={Token}\n"
+            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=0&EndPositionTicks=60000000&SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}\n"
+            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=60000000&EndPositionTicks=120000000&SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}\n"
+            + $"#EXTINF:6.000,\nstream.vtt?StartPositionTicks=120000000&EndPositionTicks=180000000&SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}\n"
+            + $"#EXTINF:2.500,\nstream.vtt?StartPositionTicks=180000000&EndPositionTicks=205000000&SegmentContainer=mp4&PlaySessionId=7bd2&ApiKey={Token}\n"
             + "#EXT-X-ENDLIST\n",
             playlist);
     }
@@ -179,7 +189,7 @@ public class HlsSubtitlesTests
     public void AFilmsPiecesCoverItEndToEndWithoutGaps()
     {
         var runtime = 2L * 60 * 60 * HlsSubtitles.TicksPerSecond + 123_456_789;   // 2 h 0 min 12.3 s
-        var lines = Lines(HlsSubtitles.SubtitlePlaylist(runtime, HlsSubtitles.PieceQuery("mp4", Token)));
+        var lines = Lines(HlsSubtitles.SubtitlePlaylist(runtime, HlsSubtitles.PieceQuery("mp4", null, Token)));
         var pieces = lines.Where(l => l.StartsWith("stream.vtt")).ToList();
         Assert.Equal((int)Math.Ceiling(runtime / (6.0 * HlsSubtitles.TicksPerSecond)), pieces.Count);
 
@@ -203,9 +213,10 @@ public class HlsSubtitlesTests
     [Fact]
     public void ThePiecesQueryIsEscapedAndSkipsWhatIsMissing()
     {
-        Assert.Equal("SegmentContainer=mp4&ApiKey=a%2Bb%26c", HlsSubtitles.PieceQuery("mp4", "a+b&c"));
-        Assert.Equal("ApiKey=t", HlsSubtitles.PieceQuery(null, "t"));
-        Assert.Equal(string.Empty, HlsSubtitles.PieceQuery(null, null));
+        Assert.Equal("SegmentContainer=mp4&PlaySessionId=p%20q&ApiKey=a%2Bb%26c", HlsSubtitles.PieceQuery("mp4", "p q", "a+b&c"));
+        Assert.Equal("SegmentContainer=mp4&ApiKey=t", HlsSubtitles.PieceQuery("mp4", null, "t"));
+        Assert.Equal("ApiKey=t", HlsSubtitles.PieceQuery(null, null, "t"));
+        Assert.Equal(string.Empty, HlsSubtitles.PieceQuery(null, null, null));
     }
 
     // — Each piece's timing line —

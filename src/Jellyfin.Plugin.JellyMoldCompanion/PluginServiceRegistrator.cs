@@ -43,6 +43,7 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         // The HLS master with subtitles that keep time (§16 idea 14): Jellyfin's own master, asked for at the plugin's
         // address, handed to Jellyfin inside the same request and given back with the subtitle playlists swapped.
         serviceCollection.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, Api.HlsMasterPlaylist>();
+        serviceCollection.AddSingleton<VideoJobClock>();
 
         // One registration per event type: Jellyfin's container does not match a consumer of a base type to its
         // derived events, so a start is not a progress as far as it is concerned.

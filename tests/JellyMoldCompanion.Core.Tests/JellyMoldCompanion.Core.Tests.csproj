@@ -26,6 +26,8 @@
   <!-- Real answers from outside services, trimmed to the fields read, so parsers are tested on what is sent. -->
   <ItemGroup>
     <None Include="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- And what Jellyfin's ffmpeg writes: init pieces of HLS video jobs, from the 10.10.7 test server. -->
+    <None Include="Fixtures\*.mp4" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
