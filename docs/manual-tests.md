@@ -121,6 +121,13 @@ playlist. These need a person and the app.
 | 3 | The same through HomeView, or AirPlay to an Apple TV | The same |
 | 4 | A film whose subtitles are a `.srt` file beside it, not inside it | The same |
 | 5 | On JRDisk, once released and with your say-so | The same; this is the server that will never have Jellyfin's own fix |
+| 6 | On a 10.10 server (the Docker one, then JRDisk with your say-so): resume a film halfway through in the CarPlay Simulator | Lines appear on time from the resume, not minutes late or never (design §19 #20) |
+| 7 | Then jump well ahead, and back to before where you resumed | Lines on time again within a few seconds each time |
+
+Checked by script on 2026-11-19 on the 10.10.7 Docker server (a 10-minute test film with an SRT beside it, transcoded
+and remuxed, fMP4 and MPEG-TS): after a resume at 5:06 and jumps to 7:30 and back to 1:39, each piece's timing line
+matched where Jellyfin's video job really began, from its init piece, including when the subtitles were asked for before
+the video. Not checked on the 12.1 server, whose build is unchanged but for the play session in the addresses.
 
 ## Updates that finish themselves — 2026-11-19
 

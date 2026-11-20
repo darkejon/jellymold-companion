@@ -3,6 +3,13 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
+## Unreleased
+
+- **Subtitles on time after a resume, on Jellyfin 10.10.** In CarPlay and HomeView, a film or episode resumed
+  partway through, or jumped far ahead or back, showed its subtitles late by however far into the film the video
+  began — minutes, so none were seen. Jellyfin 10.10 starts the video's clock again wherever it begins; the subtitle
+  pieces now say where that was. Jellyfin 12 was not affected.
+
 ## 0.8.0 — 2026-11-19 (builds 10.0.8.0 and 12.0.8.0)
 
 https://github.com/darkejon/jellymold-companion/releases/tag/v0.8.0

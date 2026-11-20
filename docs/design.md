@@ -935,6 +935,7 @@ only, so `/Info` is how a non-admin app learns the rules in force (Streamyfin do
   | A server installs the highest plugin version whose `targetAbi` it meets, with no upper bound | Versions carry the Jellyfin major first (`10.x` / `12.x`, §13a). |
   | Ships `Microsoft.Data.Sqlite` 10.0.11 | The 12 build compiles against it. |
   | **A token in an address** is read only as `ApiKey`, unless an admin switches on legacy authorization (`EnableLegacyAuthorization`, off by default). 10.10 reads `ApiKey` and `api_key`, and writes `api_key` into its own addresses | The plugin's HLS subtitle addresses carry `ApiKey`, which both read (§16 idea 14). |
+  | **HLS fMP4 video keeps the film's time** (`movflags=+frag_discont` on every video job). 10.10's clock starts at zero wherever a job begins — a resume, a jump — and only the init piece's edit list says where that was. MPEG-TS keeps the film's time on both | On 10.10, the plugin's fMP4 subtitle pieces say where the job began (§19 #20); on 12 they need nothing. |
 
   Unchanged: the one-second invented progress, the session ending with no stop, the resume settings and save
   reasons, the event-consumer pattern, the claims and policies.
@@ -1152,7 +1153,7 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
       CarPlay Simulator: lines appear sooner, and settle faster after a scrub. The cues come from Jellyfin's own subtitle
       encoder, at their times in the video, so the plugin keeps no copy (and §16 idea 3 has them ready). The timing line
       is **set, not adjusted** — `MPEGTS:0` for fMP4 video, `MPEGTS:900000` for anything else, as Jellyfin's fix does — so
-      it stays right once Jellyfin ships its fix.
+      it stays right once Jellyfin ships its fix. (On 10.10, fMP4 video begun mid-film needs one more thing: #20.)
     - **Signed in from the address alone**, because the car sends no header: the token Jellyfin's own addresses carry,
       written on as `ApiKey`, which both builds read (§14). The item must be one the caller can see — Jellyfin's check on
       its own subtitle playlist, made here on every piece too, where Jellyfin's pieces need no sign-in at all.
@@ -1179,6 +1180,27 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     - **A version waiting is read as Jellyfin's API reports it** (`LocalPlugin.GetPluginInfo().Status`), not from its
       saved manifest: Jellyfin 12 marks it in memory only (`RestartRequired`), leaving the saved status as it was, so
       reading the manifest found nothing waiting on 12.1. Both builds read it the same way.
+
+20. **Subtitles that keep time after a resume, on 10.10 (#18).** Found by the app's session on JRDisk: Planet Earth
+    resumed at 3:30 in the car, and no line showed. Jellyfin restarts its video job whenever a player asks for a piece
+    far from the one being written — a resume, a jump of more than about 24 seconds — and begins it at the keyframe
+    before that piece. On 10.10 the new job's fMP4 clock reads zero there, so `MPEGTS:0` puts every line late by
+    however far into the film the job began. 12.1 keeps the film's time (a job begun at 3:29 writes 209.2 s, measured)
+    and MPEG-TS keeps it on both, so only fMP4 on 10.10 changes.
+    - **The job says where it began; the plugin reads it there.** Each job writes an empty edit at the head of its video
+      track in its init piece, exact to the keyframe: 305.000 s for a transcode asked to begin at 306 s, 445 s for one
+      asked for 450 s (10.10.7). The piece's timing line becomes `MPEGTS:0,LOCAL:<that time>`. **Not worked out from
+      the playlist**, the way the app's relay first did: a job begins at the keyframe *before* the piece asked for
+      (Jellyfin seeks fMP4 with `-noaccurate_seek`), so a piece's place in the playlist less its clock is out by up to a
+      keyframe interval — 5 s in that second case, up to 10 s in a typical film.
+    - **Found by the play session**, which the plugin's subtitle addresses now carry: Jellyfin keeps one video job per
+      play session, with its files in the transcode folder. Only a job for the same version of the video is read.
+    - **A piece waits for its job**, up to 8 seconds: after a jump the car may ask for subtitles just before the video
+      that makes Jellyfin begin again. A piece is answered once a job covers it — begun before the piece ends, and
+      written to no more than 24 seconds short of it, the lead Jellyfin gives a job before starting another. Measured
+      on 10.10.7: 2.5 s after a resume, at once while playing on. A piece no job covers (from before where the video
+      began) waits the 8 seconds and takes the session's job as it is; the car plays nothing from there.
+    - **Jellyfin 12 is left as it was**: its build reads nothing.
 
 ### Still open
 
@@ -1220,3 +1242,5 @@ Read from source on 2026-10-30: Jellyfin at tag `v10.10.7`, and each plugin at i
 | Subtitle playlist signed in, the item visible to the caller; pieces with no sign-in, every one opening `MPEGTS:900000` (the same) | `Jellyfin.Api/Controllers/SubtitleController.cs` |
 | A token in the address: `ApiKey`, and `api_key` (on 12 only with legacy authorization) (the same) | `Jellyfin.Server.Implementations/Security/AuthorizationContext.cs`, `MediaBrowser.Model/Dlna/StreamInfo.cs` |
 | fMP4 video starts at zero, so its subtitles need `MPEGTS:0`; Jellyfin's fix sets it by segment container | jellyfin/jellyfin PR #17299 (merged 2026-10-13; in no release on 2026-11-19); measured in the CarPlay Simulator by the app's session, `../JellyMold/docs/carplay.md` |
+| A video job restarted for a piece over 24 seconds' worth of pieces past the newest, or before it, beginning at that piece; one job per play session, its files `{name}.m3u8`, `{name}-1.mp4`, `{name}{n}.mp4` (10.10.7 and 12.1) | `Jellyfin.Api/Controllers/DynamicHlsController.cs` (`GetDynamicSegment`, `GetSegmentPath`), `MediaBrowser.MediaEncoding/Transcoding/TranscodeManager.cs` |
+| fMP4 seeking with `-noaccurate_seek`, so a job begins at the keyframe before; 12.1 adding `movflags=+frag_discont`, 10.10.7 not | `MediaBrowser.Controller/MediaEncoding/EncodingHelper.cs` (`GetFastSeekCommandLineParameter`), `DynamicHlsController.GetCommandLineArguments`; measured on both test servers 2026-11-19: a 10.10.7 job begun mid-film writes its pieces from zero and its start as an empty edit, a 12.1 one the film's time |
