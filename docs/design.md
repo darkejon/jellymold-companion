@@ -1013,6 +1013,7 @@ is still to be asked.
 | 12 | *(new, 2026-11-14)* **The stats page on the web** — each person's stats in any browser, at `/JellyMold/Stats` on the server's own address, laid out as the app's stats screen: the *Watched* card, streaks, films, series, recently watched and each year, with every film and series a level deeper. Only this server's history, where the app combines every server. | Built into the plugin (one page, a style sheet and a script, inside the assembly) and drawn from the API it already has, so its figures are the app's. Nothing to install; works behind a reverse proxy or a base URL. Rows open the item in Jellyfin's web client. Found from a link in everyone's Jellyfin menu, the dashboard's own item for admins, its address on the settings page, and a link in the app (the app's session). | **M** |
 | 13 | *(new, 2026-11-19)* **Ratings from other sites** — IMDb, Rotten Tomatoes (critics and audience), Metacritic, TMDb, Letterboxd, Trakt, Roger Ebert and MyAnimeList for each film and series, so JellyMold can show the one each viewer prefers, where Jellyfin keeps two at most. Fetched from MDBList, which gathers them in one answer, **with the server owner's own free key**. | A key, a nightly task, a table, one endpoint. Asked for by the app's own session. | **S** |
 | 14 | *(new, 2026-11-19)* **Subtitles that keep time in CarPlay and HomeView** — for players that fetch every address themselves and draw Apple's subtitles, not Jellyfin's: CarPlay, Apple's HomeView, an Apple TV under AirPlay. Jellyfin's subtitle pieces all open with `X-TIMESTAMP-MAP=MPEGTS:900000`, right for MPEG-TS video and ten seconds out for the fMP4 video Apple's players are sent, so every line shows about ten seconds late. Jellyfin's own fix (PR #17299) is in no release yet, and 10.10 will never get it. The app fixes it with a relay on the phone; the plugin does the same on the server, as a backup and one more reason to install it. | Jellyfin's own master playlist, asked for inside the same request and changed only in its addresses; the plugin's own subtitle playlists, in 6-second pieces with the timing line set by the video's container. Asked for by the app's session, to a contract it built against at the same time. | **S** |
+| 15 | *(new, 2026-11-22)* **The server's clock, for allowed hours** — Jellyfin keeps an account's access schedule (Parental control) in the server's local time and never says which zone that is; the plugin says, in `/Info`'s `Server.TimeZone`, so an app can warn before the hours end and say when they open again. Asked for by the app's session | One field, from `TimeZoneInfo.Local` (a Windows name converted to IANA), with the offset beside it | S |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
 fixes a real fault every app on the server has) → **4** → **3** → **2** → **5** → **8**. Idea 10 stays a switch
@@ -1207,6 +1208,16 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
 16. **§16 idea 9, "find this media here"** — given provider ids, this server's copy and the person's watch
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
+
+### Decided 2026-11-22
+
+21. **The server's clock, §16 idea 15**, asked for by the app's session. Measured on 10.10.7 the same day: outside an
+    account's allowed hours Jellyfin answers every request with a 403 and refuses a sign-in, but a static stream already
+    playing carries on, so the app ends the viewing itself and warns before it does; for that it needs the zone the
+    schedule is kept in. **An IANA name** (`Europe/London`), which every app platform reads; a Windows server's own name
+    is converted, and where there is no IANA name the field is null and `UtcOffsetSeconds` is there. **The zone the
+    server runs in, not the household's**: a Docker container left on UTC keeps its schedules in UTC, and reporting that
+    is the point. No schedule is read or kept by the plugin; the app reads the account's own from Jellyfin.
 ---
 
 ## Sources

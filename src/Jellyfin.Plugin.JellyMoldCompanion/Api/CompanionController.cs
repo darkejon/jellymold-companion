@@ -75,6 +75,9 @@ public sealed class CompanionController : CompanionControllerBase
             {
                 Version = typeof(MediaBrowser.Controller.IServerApplicationHost).Assembly.GetName().Version?.ToString(3),
                 IdleStopGuessFixedUpstream = global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.IdleGuessCorrector.FixedUpstream,
+                // The clock Jellyfin keeps an account's allowed hours by (§16 idea 15).
+                TimeZone = global::JellyMoldCompanion.Model.ServerClock.IanaZone(TimeZoneInfo.Local),
+                UtcOffsetSeconds = global::JellyMoldCompanion.Model.ServerClock.OffsetSeconds(TimeZoneInfo.Local, DateTimeOffset.UtcNow),
             },
             Recording = _companion.Recording.IsRecording,
             // A newer version installed and waiting for Jellyfin to restart, and what the plugin will do about it (§13a).

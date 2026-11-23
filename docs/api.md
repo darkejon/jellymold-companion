@@ -89,6 +89,7 @@ Whether the plugin is here, and the rules it counts by.
 {
   "Name": "JellyMold Companion", "PluginVersion": "12.0.1.0", "ApiVersion": 1,
   "Features": ["history", "summary", "changes", "clientSessions", "export", "sessions"],   // and "ratings" with a working MDBList key
+  "Server": { "Version": "12.1.0", "TimeZone": "Europe/London", "UtcOffsetSeconds": 0 },
   "Recording": true,
   "Update": { "Waiting": "12.0.8.0", "RestartAt": "2026-11-20T09:00:00Z" },
   "Rules": { "CompletionPercent": 90, "AudioBookCompletionMinutesLeft": 5, "MusicListenedFraction": 0.5,
@@ -97,6 +98,12 @@ Whether the plugin is here, and the rules it counts by.
   "You": { "UserId": "…", "IsAdmin": false, "Recorded": true, "RecordingSince": "2026-10-30T17:07:48Z" }
 }
 ```
+
+**`Server.TimeZone`** (from release 0.9.0; absent before it) is the zone the server's clock runs in, as an IANA name,
+and `UtcOffsetSeconds` its offset from UTC now, summer time included. Jellyfin keeps an account's allowed hours
+(Parental control › Access schedule) in that zone and never says which it is, so an app can warn before the hours end
+and say when they open again only by asking here (design §16 idea 15). `TimeZone` is null for a zone with no IANA name;
+the offset is always there.
 
 **`Update`** (from release 0.8.0; absent before it) is a newer version of the plugin, installed by Jellyfin and
 waiting for Jellyfin to restart (design §13a). Until then the server goes on running `PluginVersion`, and `Features`

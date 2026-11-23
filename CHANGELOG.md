@@ -5,6 +5,11 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
 
 ## Unreleased
 
+- **The server's clock, for allowed hours.** Jellyfin keeps an account's allowed hours (Parental control › Access
+  schedule) on the server's own clock and never tells apps which time zone that is. `/Info` now says, so JellyMold can
+  warn a viewer five minutes and one minute before their time ends, and say when they can watch again, even when the
+  server runs on a different clock from the household (a Docker container left on UTC, say).
+
 - **Subtitles on time after a resume, on Jellyfin 10.10.** In CarPlay and HomeView, a film or episode resumed
   partway through, or jumped far ahead or back, showed its subtitles late by however far into the film the video
   began — minutes, so none were seen. Jellyfin 10.10 starts the video's clock again wherever it begins; the subtitle
