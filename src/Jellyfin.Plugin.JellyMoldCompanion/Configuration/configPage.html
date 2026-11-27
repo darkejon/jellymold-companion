@@ -114,6 +114,18 @@
                 </div>
 
                 <div class="verticalSection">
+                    <h3 class="sectionTitle">New episodes</h3>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label><input is="emby-checkbox" type="checkbox" id="NotifyNewEpisodes"><span>Tell JellyMold apps about new episodes</span></label>
+                        <div class="fieldDescription checkboxFieldDescription">When an episode arrives of a show somebody on this server
+                            requested through Seerr, and asked JellyMold to tell them about each new episode of, the plugin passes it to
+                            JellyMold's notification service, which sends their phone a notification. Only those shows are sent, and only
+                            the show's name and ids, and each new episode's season, number, title and id: nothing else in the library
+                            leaves the server, and nothing about who watches what.</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
                     <h3 class="sectionTitle">Updates</h3>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label><input is="emby-checkbox" type="checkbox" id="RestartForUpdates"><span>Restart Jellyfin to finish updating this plugin</span></label>
@@ -196,7 +208,7 @@
             const numbers = ['MinimumVideoSeconds', 'AbandonAfterDays',
                 'SampleRetentionDays', 'DailyBackupsToKeep', 'WeeklyBackupsToKeep'];
             const switches = ['RecordMovies', 'RecordEpisodes', 'RecordVideos', 'FixIdleStopGuess', 'PrepareSubtitles', 'MeasurePictureCrop', 'FetchRatings',
-                'RestartForUpdates'];
+                'RestartForUpdates', 'NotifyNewEpisodes'];
             let people = [];
 
             function api(path) {

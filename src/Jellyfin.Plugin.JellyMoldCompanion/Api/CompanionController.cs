@@ -70,7 +70,10 @@ public sealed class CompanionController : CompanionControllerBase
             {
                 "history", "summary", "changes", "clientSessions", "export", "sessions", "imports",
                 "store", "household", "quiz", "segments", "home", "pictureCrop", "statsPage", "hlsSubtitles",
-            }.Concat(_ratings.Offering ? ["ratings"] : Array.Empty<string>()),
+            }.Concat(_ratings.Offering ? ["ratings"] : Array.Empty<string>())
+                // "episodeNotifications" while the plugin tells JellyMold apps about new episodes (§16 idea 16): the app
+                // offers its "Each episode" switch only where it is listed.
+                .Concat(global::Jellyfin.Plugin.JellyMoldCompanion.Jellyfin.EpisodeNotifier.On ? ["episodeNotifications"] : Array.Empty<string>()),
             Server = new
             {
                 Version = typeof(MediaBrowser.Controller.IServerApplicationHost).Assembly.GetName().Version?.ToString(3),

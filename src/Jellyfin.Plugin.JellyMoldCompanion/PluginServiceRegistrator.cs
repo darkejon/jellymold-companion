@@ -33,6 +33,10 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<Imports.ImportService>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<Imports.ImportService>());
 
+        // Telling JellyMold apps about new episodes of the shows somebody asked to hear about.
+        serviceCollection.AddSingleton<EpisodeNotifier>();
+        serviceCollection.AddHostedService(provider => provider.GetRequiredService<EpisodeNotifier>());
+
         // Restarting Jellyfin, in quiet hours, to finish the plugin's own update.
         serviceCollection.AddSingleton<UpdateRestarter>();
         serviceCollection.AddHostedService(provider => provider.GetRequiredService<UpdateRestarter>());

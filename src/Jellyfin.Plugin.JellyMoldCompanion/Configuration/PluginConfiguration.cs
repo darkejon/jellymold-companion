@@ -70,6 +70,22 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool StatsInEveryonesMenu { get; set; } = true;
 
+    // — New episodes —
+
+    /// <summary>
+    /// Tell JellyMold apps about new episodes, through JellyMold's notification relay (design §16 idea 16, §19 decision
+    /// 22): only of shows somebody here requested through Seerr and asked to hear about each episode of, and only the
+    /// show's name and ids, and each episode's season, number, title and id. On unless switched off (asked for by the app,
+    /// 2026-11-27). While on, <c>/Info</c> lists <c>episodeNotifications</c>.
+    /// </summary>
+    public bool NotifyNewEpisodes { get; set; } = true;
+
+    /// <summary>
+    /// The relay's address, for testing against a stand-in. Not on the settings page; empty means JellyMold's own. The
+    /// plugin's instance there and its secret are kept apart from these settings (<c>data/jellymold/relay.json</c>).
+    /// </summary>
+    public string? NotificationRelay { get; set; }
+
     // — Updates —
 
     /// <summary>
