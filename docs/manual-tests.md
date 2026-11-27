@@ -147,3 +147,27 @@ the settings page's notice said to restart Jellyfin where it runs. These need a 
 | 5 | Change the time to 23:30, save, and reopen the page | The time is kept, and the notice says 23:30 on the server's clock in your own time |
 | 6 | On the local 12.1 server, a real release once it is out | The restart happens at 04:00 and the new version is running in the morning |
 | 7 | On JRDisk, which has Playback Reporting | No restart; the settings page says a version is waiting, and Package Center's Stop and Run finishes it |
+
+## New episodes, for JellyMold's notifications — 2026-11-27
+
+Checked on the Docker 10.10.7 server against a stand-in relay on the Mac (`NotificationRelay`), with episode files
+copied into the test show and a new show, and a library scan: one new episode reached it about 90 seconds after the scan
+(an instance made, the wanted shows asked for, then the episode, with the show's TMDB id); two episodes added in one
+scan went as one request, in order; after the stand-in forgot the instance, the plugin got a 401, made a new one and
+carried on; a show not on the wanted list sent nothing; the instance file is the server account's alone, and its secret
+is in neither Jellyfin's log nor the plugin's settings; switching the setting off took `episodeNotifications` out of
+`/Info`. Against the real relay (with the maintainer's go-ahead): the 10.10 server made its instance and asked for the
+wanted shows by itself after a new episode, and a batch posted with that instance was answered `{"sent":0,"failed":0}`
+(no phone follows a show yet); a wrong secret got a 401. On the local 12.1 server the plugin starts with it, but no
+episode was added there (its library is the maintainer's own). These need a person and the app.
+
+| # | Do this | Expect |
+|---|---|---|
+| 1 | In the app, on a server running 0.9.0, open the Seerr notification settings | *Each episode* is on offer, not greyed out |
+| 2 | Request a show through Seerr in the app with *Each episode* on, then add one new episode of it to the library | One notification about a minute and a half after the scan: the show's name, and *Season n, episode m* with its title |
+| 3 | Add a whole season at once | One notification for the season, not one per episode |
+| 4 | Add an episode of a show nobody requested | No notification, and nothing about it in the relay's log |
+| 5 | Switch *Tell JellyMold apps about new episodes* off | The app greys *Each episode* out again; new episodes send nothing |
+| 6 | Read the setting's description on the settings page | Plain, and accurate about what is sent |
+| 7 | On JRDisk, once released and with your say-so | The same as 2 |
+

@@ -105,6 +105,12 @@ and `UtcOffsetSeconds` its offset from UTC now, summer time included. Jellyfin k
 and say when they open again only by asking here (design §16 idea 15). `TimeZone` is null for a zone with no IANA name;
 the offset is always there.
 
+**`episodeNotifications`** (from release 0.9.0) is in `Features` while the plugin tells JellyMold apps about new
+episodes (design §16 idea 16): for each show somebody here requested through Seerr and asked to hear about each episode
+of, it sends JellyMold's notification relay the show's name and ids, and each new episode's season, number, title and
+id, batched per series. Absent where the plugin is older or the admin has switched it off. The plugin's side of the relay
+is in the app repository, `docs/seerr-notifications.md`.
+
 **`Update`** (from release 0.8.0; absent before it) is a newer version of the plugin, installed by Jellyfin and
 waiting for Jellyfin to restart (design §13a). Until then the server goes on running `PluginVersion`, and `Features`
 describes that version. Each field is left out when it has no value, so `"Update": {}` means nothing is waiting:

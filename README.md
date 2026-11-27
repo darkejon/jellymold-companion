@@ -8,7 +8,11 @@ server — whichever app they use — and lets each person read their own histor
 - **Watched at 90%** (your server's own resume setting), and watching again counts again.
 - **Kept for good.** History survives the media being deleted from your library, plugin updates (the database is
   only ever added to), and a damaged disk (nightly backups). The plugin never deletes history; you can export it.
-- **Private by default.** Each person sees only their own history; admins can see everyone's.
+- **Private by default.** Each person sees only their own history; admins can see everyone's. The one thing sent off
+  the server unasked is for JellyMold's notifications: when an episode arrives of a show somebody requested through
+  Seerr and asked JellyMold to tell them about, the show's name and ids, and the episode's season, number, title and
+  id, go to JellyMold's notification service. Nothing else in the library leaves the server; a switch on the settings page turns
+  it off.
 - **Ratings from other sites**, optional: with your own free MDBList API key, IMDb, Rotten Tomatoes, Metacritic,
   Letterboxd and more for each film and series, so JellyMold can show the one each person prefers. Only the titles'
   ids are sent to MDBList, never who watches what.

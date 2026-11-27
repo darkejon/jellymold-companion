@@ -1014,6 +1014,7 @@ is still to be asked.
 | 13 | *(new, 2026-11-19)* **Ratings from other sites** — IMDb, Rotten Tomatoes (critics and audience), Metacritic, TMDb, Letterboxd, Trakt, Roger Ebert and MyAnimeList for each film and series, so JellyMold can show the one each viewer prefers, where Jellyfin keeps two at most. Fetched from MDBList, which gathers them in one answer, **with the server owner's own free key**. | A key, a nightly task, a table, one endpoint. Asked for by the app's own session. | **S** |
 | 14 | *(new, 2026-11-19)* **Subtitles that keep time in CarPlay and HomeView** — for players that fetch every address themselves and draw Apple's subtitles, not Jellyfin's: CarPlay, Apple's HomeView, an Apple TV under AirPlay. Jellyfin's subtitle pieces all open with `X-TIMESTAMP-MAP=MPEGTS:900000`, right for MPEG-TS video and ten seconds out for the fMP4 video Apple's players are sent, so every line shows about ten seconds late. Jellyfin's own fix (PR #17299) is in no release yet, and 10.10 will never get it. The app fixes it with a relay on the phone; the plugin does the same on the server, as a backup and one more reason to install it. | Jellyfin's own master playlist, asked for inside the same request and changed only in its addresses; the plugin's own subtitle playlists, in 6-second pieces with the timing line set by the video's container. Asked for by the app's session, to a contract it built against at the same time. | **S** |
 | 15 | *(new, 2026-11-22)* **The server's clock, for allowed hours** — Jellyfin keeps an account's access schedule (Parental control) in the server's local time and never says which zone that is; the plugin says, in `/Info`'s `Server.TimeZone`, so an app can warn before the hours end and say when they open again. Asked for by the app's session | One field, from `TimeZoneInfo.Local` (a Windows name converted to IANA), with the offset beside it | S |
+| 16 | *(new, 2026-11-27)* **New episodes, for JellyMold's notifications** — Seerr says only that a requested show is complete, never that an episode arrived, so the app's *Each episode* switch needs the server to say. The plugin tells JellyMold's notification relay about new episodes of the shows somebody on this server requested through Seerr and asked to hear about each episode of; the relay sends their phones a notification. Asked for by the app's session, to a contract it built the relay to the same day. | A listener on new episodes, batched per series; three calls to the relay; a setting, on by default. The first thing the plugin sends off the server without an admin entering a key. | **S** |
 
 **Proposed order for Phase 3:** **1** (sync without iCloud, and the base for 2 and 5) → **10** (small, and it
 fixes a real fault every app on the server has) → **4** → **3** → **2** → **5** → **8**. Idea 10 stays a switch
@@ -1209,6 +1210,36 @@ is not running and needs starting (`open -a OrbStack`). Nothing touches JRDisk.
     state in one request, for the multi-server merge. Small; left out of the list by mistake.
 
 
+### Decided 2026-11-27
+
+22. **New episodes, for JellyMold's notifications, §16 idea 16**, asked for by the app's session to a contract it
+    built the relay to (`../JellyMold/docs/seerr-notifications.md`). While on, `/Info` lists `episodeNotifications`,
+    which the app's *Each episode* switch waits for.
+    - **On by default**, as the app asked: *Tell JellyMold apps about new episodes*. **It sends something off the server
+      without an admin entering anything**, the first feature that does; the settings page and the README say what.
+    - **What leaves the server**: only for a show somebody here requested through Seerr and asked to hear about each
+      episode of (the relay's list, asked for at most every five minutes), the show's name, its TMDB and TVDB ids and
+      Jellyfin id, and each new episode's season, number, title and Jellyfin id. Nothing about the rest of the library,
+      and nothing about who watches what. **The relay is not contacted until an episode arrives**: a server where none
+      do never contacts it.
+    - **Batched per series**: sent once no new episode of the series has arrived for 90 seconds, or ten minutes after
+      its first, so a season added in one scan is one notification. Each episode is **read again from the library when
+      its batch goes**, not when it arrived: the scan makes it before its metadata. An episode deleted meanwhile is left
+      out. A batch the relay could not be told about is tried again for half an hour after its first episode.
+    - **A scan adds an episode before writing its series' id on it** (seen on 10.10.7: the first test found every
+      batch empty), so the series is found through the episode's folders (`Episode.Series`).
+    - **Held while the series has neither a TMDB nor a TVDB id**: a new series may not have its metadata yet. Ten
+      minutes on, it goes if it has one by then, or not at all. (The relay matched on TMDB only at first; the app's
+      session made it match on TVDB too, the same day.)
+    - **At most 200 episodes a request**, all the relay reads, and well under its 64 KB (raised from 16 KB the same
+      day): a bigger batch keeps its earliest 200.
+    - **The instance and its secret are kept apart from the settings**, in `data/jellymold/relay.json`, readable by the
+      server's account alone: Jellyfin's settings API hands the settings to an admin's browser, which posts them back
+      whole. The secret travels only in the `Authorization` header and is in no log, error or answer. A new instance
+      on a 401 (the relay was reset), and one retry; remade after a refusal at most every half hour, as the relay keeps
+      twenty a server.
+    - `NotificationRelay`, not on the settings page, points the plugin at a stand-in relay for testing.
+
 ### Decided 2026-11-22
 
 21. **The server's clock, §16 idea 15**, asked for by the app's session. Measured on 10.10.7 the same day: outside an
@@ -1245,6 +1276,8 @@ Read from source on 2026-10-30: Jellyfin at tag `v10.10.7`, and each plugin at i
 | SQLite versions (`Microsoft.Data.Sqlite` 8.0.11, SQLitePCLRaw 2.1.6) | `Directory.Packages.props` |
 | Packages' licence GPL-3.0-only | `MediaBrowser.Controller.csproj`, `MediaBrowser.Model.csproj` |
 | Playback Reporting schema, local-time dates, 20 s rule, 3-month trim, admin-only API | `jellyfin-plugin-playbackreporting` v16: `Data/ActivityRepository.cs`, `EventMonitorEntryPoint.cs`, `TaskCleanDb.cs` |
+| The relay's three calls, its 16 KB limit, twenty instances a server, a show found by its TMDB id | `../JellyMold/services/push-relay/src/index.ts` and `docs/seerr-notifications.md`, read 2026-11-27 |
+| A new episode's series id unset when `ItemAdded` is raised during a scan | Seen on the Docker 10.10.7 server, 2026-11-27 |
 | An update waits for a restart; Jellyfin's own restart loads it; Playback Reporting 16 stops that restart on 10.10.7 | Tested 2026-11-19 on the Docker 10.10.7 server, with each plugin in and out; forum reports of the same error |
 | Template layout; manifest format and MD5 check | `jellyfin-plugin-template` (2024 layout), `MediaBrowser.Model/Updates/*`, `InstallationManager.cs` |
 | Chapter Segments Provider patterns | `jellyfin-plugin-chapter-segments` v1.0.0, `Configuration/PluginConfiguration.cs` |

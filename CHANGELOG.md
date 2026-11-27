@@ -5,6 +5,14 @@ build for Jellyfin 12 (design §13a). Both come from the same release.
 
 ## Unreleased
 
+- **New episodes, for JellyMold's notifications.** Seerr tells JellyMold when a requested show is complete, never when
+  an episode arrives. The plugin now does: when an episode arrives of a show somebody on the server requested through
+  Seerr and asked JellyMold to tell them about each episode of, it tells JellyMold's notification service, which sends
+  their phone a notification. A season added in one scan is one notification. Only those shows are sent, and only the
+  show's name and ids, and each episode's season, number, title and id; nothing else in the library leaves the server. On
+  by default; *Tell JellyMold apps about new episodes* on the settings page turns it off. `/Info` lists
+  `episodeNotifications` while it is on.
+
 - **The server's clock, for allowed hours.** Jellyfin keeps an account's allowed hours (Parental control › Access
   schedule) on the server's own clock and never tells apps which time zone that is. `/Info` now says, so JellyMold can
   warn a viewer five minutes and one minute before their time ends, and say when they can watch again, even when the
