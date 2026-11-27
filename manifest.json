@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/darkejon/jellymold-companion/main/images/jellymold-companion.png",
     "versions": [
       {
+        "version": "12.0.9.0",
+        "changelog": "New episodes for JellyMold's notifications: only shows somebody requested through Seerr, only their names, ids and episode numbers and titles (a setting, on). The server's clock for allowed hours, and subtitles on time after a resume on Jellyfin 10.10.",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.9.0/jellymold-companion_12.0.9.0.zip",
+        "checksum": "d38cf16a63e68a47ab6bf97ede3071ff",
+        "timestamp": "2026-11-27T21:32:16Z"
+      },
+      {
         "version": "12.0.8.0",
         "changelog": "Updates finish themselves: the plugin restarts Jellyfin to finish its own update, at 04:00 when nothing is playing (a setting), except with Playback Reporting installed. The settings page says when a new version is waiting.",
         "targetAbi": "12.1.0.0",
@@ -63,6 +71,14 @@
         "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.3.0/jellymold-companion_12.0.3.0.zip",
         "checksum": "33088bcf91d88a016b22f97f9de2f9b7",
         "timestamp": "2026-10-30T19:59:08Z"
+      },
+      {
+        "version": "10.0.9.0",
+        "changelog": "New episodes for JellyMold's notifications: only shows somebody requested through Seerr, only their names, ids and episode numbers and titles (a setting, on). The server's clock for allowed hours, and subtitles on time after a resume on Jellyfin 10.10.",
+        "targetAbi": "10.10.7.0",
+        "sourceUrl": "https://github.com/darkejon/jellymold-companion/releases/download/v0.9.0/jellymold-companion_10.0.9.0.zip",
+        "checksum": "99aaa70b4dbea6599b9e14c4efe82440",
+        "timestamp": "2026-11-27T21:32:16Z"
       },
       {
         "version": "10.0.8.0",
