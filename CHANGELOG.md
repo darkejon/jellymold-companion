@@ -3,7 +3,9 @@
 Plugin versions carry the Jellyfin major version first: `10.x.y.z` is the build for Jellyfin 10.10, `12.x.y.z` the
 build for Jellyfin 12 (design §13a). Both come from the same release.
 
-## Unreleased
+## 0.9.0 — 2026-11-27 (builds 10.0.9.0 and 12.0.9.0)
+
+https://github.com/darkejon/jellymold-companion/releases/tag/v0.9.0
 
 - **New episodes, for JellyMold's notifications.** Seerr tells JellyMold when a requested show is complete, never when
   an episode arrives. The plugin now does: when an episode arrives of a show somebody on the server requested through
